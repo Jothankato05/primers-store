@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppCard from '../components/AppCard';
-import { Search, Upload, Shield, Download, Star, ArrowRight } from 'lucide-react';
+import { Upload, Shield, Download, Star, ArrowRight, Monitor } from 'lucide-react';
 
 export default function Home() {
   const { user } = useAuth();
@@ -22,29 +22,38 @@ export default function Home() {
 
   return (
     <div>
-      <section className="bg-gradient-to-br from-primer-700 via-primer-600 to-primer-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 lg:py-28">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl lg:text-5xl font-bold tracking-tight">
-              Discover & distribute <span className="text-primer-200">apps</span> with confidence
-            </h1>
-            <p className="mt-4 text-lg text-primer-100/90 leading-relaxed">
-              Primers Store is your trusted marketplace for applications. Every app goes through our verification process — quality you can trust.
-            </p>
-            <div className="flex flex-wrap gap-3 mt-8">
-              <Link to="/store" className="inline-flex items-center gap-2 bg-white text-primer-700 px-6 py-3 rounded-lg font-semibold hover:bg-primer-50 transition-colors">
-                <Search className="w-5 h-5" /> Browse Store
-              </Link>
-              {!user && (
-                <Link to="/register" className="inline-flex items-center gap-2 bg-primer-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primer-400 transition-colors border border-primer-400">
-                  Get Started <ArrowRight className="w-5 h-5" />
+      {/* Hero — matching Primers landing page layout */}
+      <section className="bg-gradient-to-br from-gray-50 via-white to-primer-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left: text + CTAs */}
+            <div>
+              <h1 className="text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight">
+                Welcome to<br />
+                <span className="text-primer-600">Primers Store</span>
+              </h1>
+              <p className="mt-6 text-lg text-gray-600 leading-relaxed max-w-lg">
+                Your trusted marketplace for verified applications. Every app goes through our rigorous review process — quality and safety you can count on.
+              </p>
+              <div className="flex flex-wrap gap-4 mt-8">
+                <Link to="/store" className="bg-gray-900 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors shadow-lg shadow-gray-900/20">
+                  Get Started
                 </Link>
-              )}
-              {(user?.role === 'developer' || user?.role === 'admin') && (
-                <Link to="/developer/submit" className="inline-flex items-center gap-2 bg-primer-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primer-400 transition-colors border border-primer-400">
-                  <Upload className="w-5 h-5" /> Submit an App
+                <Link to="/store" className="bg-white text-gray-700 px-8 py-3.5 rounded-xl font-semibold border-2 border-gray-300 hover:border-gray-400 transition-colors">
+                  Learn More
                 </Link>
-              )}
+              </div>
+            </div>
+            {/* Right: Primers brand visual */}
+            <div className="flex justify-center lg:justify-end">
+              <div className="relative">
+                <div className="absolute inset-0 bg-primer-400/20 blur-3xl rounded-full" />
+                <img
+                  src="/primers-mockup.jpg"
+                  alt="Primers Store on MacBook"
+                  className="relative rounded-2xl shadow-2xl max-w-full lg:max-w-lg object-cover border-4 border-white"
+                />
+              </div>
             </div>
           </div>
         </div>
