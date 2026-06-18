@@ -122,6 +122,12 @@ router.get('/:slug', (req, res) => {
     return res.status(404).json({ error: 'App not found' });
   }
 
+  // Override Presona display info
+  if (req.params.slug === 'presona') {
+    app.developer_display = 'Primers Group';
+    app.short_description = 'Your personal AI agent. Fully offline. Knows your work. Powered by PrimersGPT.';
+  }
+
   app.screenshots = db.prepare(
     'SELECT * FROM app_screenshots WHERE app_id = ? ORDER BY sort_order'
   ).all(app.id);
@@ -130,6 +136,11 @@ router.get('/:slug', (req, res) => {
   app.latest_version = db.prepare(
     "SELECT id, version, changelog, file_url, file_size, platform, min_os_version, downloads_count, created_at FROM app_versions WHERE app_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT 1"
   ).get(app.id);
+
+  // Override Presona download URL to Internet Archive
+  if (req.params.slug === 'presona' && app.latest_version) {
+    app.latest_version.file_url = 'https://archive.org/download/presona-installer/Presona-Installer.exe';
+  }
 
   const reviews = db.prepare(
     'SELECT r.*, u.username, u.avatar_url FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.app_id = ? ORDER BY r.created_at DESC LIMIT 10'

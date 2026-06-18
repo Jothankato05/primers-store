@@ -20,7 +20,7 @@ if (!existingDev) {
   db.prepare(`
     INSERT INTO users (username, email, password_hash, display_name, role, email_verified)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run('demo-dev', 'dev@primers.store', password_hash, 'Demo Developer', 'developer', 1);
+  `).run('demo-dev', 'dev@primers.store', password_hash, 'Primers Group', 'developer', 1);
   console.log('✅ Developer account created: dev@primers.store / dev123456');
 }
 

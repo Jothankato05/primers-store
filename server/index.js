@@ -23,7 +23,7 @@ function autoSeed() {
     const password_hash = hashPassword('admin123');
     db.prepare(`INSERT INTO users (username, email, password_hash, display_name, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)`).run('admin', 'admin@primers.store', password_hash, 'Primers Admin', 'admin', 1);
     const dev_hash = hashPassword('dev123456');
-    db.prepare(`INSERT INTO users (username, email, password_hash, display_name, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)`).run('demo-dev', 'dev@primers.store', dev_hash, 'Demo Developer', 'developer', 1);
+    db.prepare(`INSERT INTO users (username, email, password_hash, display_name, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)`).run('demo-dev', 'dev@primers.store', dev_hash, 'Primers Group', 'developer', 1);
     const user_hash = hashPassword('user123456');
     db.prepare(`INSERT INTO users (username, email, password_hash, display_name, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)`).run('demo-user', 'user@primers.store', user_hash, 'Demo User', 'user', 1);
     console.log('✅ Demo accounts created');
