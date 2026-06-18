@@ -13,13 +13,21 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     Promise.all([
-      fetch('/api/apps?sort=downloads&limit=6').then(r => r.json()),
-      fetch('/api/apps/categories').then(r => r.json()),
+      fetch('/api/apps?sort=downloads&limit=6', { signal: controller.signal }).then(r => r.json()),
+      fetch('/api/apps/categories', { signal: controller.signal }).then(r => r.json()),
     ]).then(([appsData, catsData]) => {
       setFeaturedApps(appsData.apps || []);
       setCategories(catsData.categories || []);
-    }).finally(() => setLoading(false));
+    }).catch(() => {
+      setFeaturedApps([]);
+      setCategories([]);
+    }).finally(() => {
+      clearTimeout(timeout);
+      setLoading(false);
+    });
   }, []);
 
   return (

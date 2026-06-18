@@ -32,9 +32,13 @@ export default function AppDetail() {
         headers: user ? { 'Authorization': `Bearer ${localStorage.getItem('primers_token')}` } : {}
       });
       toast.success('Download started!');
-      // In a real store, this would trigger the actual file download
       if (app.latest_version?.file_url) {
-        window.open(app.latest_version.file_url, '_blank');
+        const link = document.createElement('a');
+        link.href = app.latest_version.file_url;
+        link.download = `${app.name}-${app.latest_version.version}.exe`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch { toast.error('Download failed'); }
   };
