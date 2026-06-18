@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import AppCard from '../components/AppCard';
+import AppCard3D from '../components/AppCard3D';
+import Hero3DScene from '../components/Hero3DScene';
 import { Upload, Shield, Download, Star, ArrowRight, Monitor } from 'lucide-react';
 
 export default function Home() {
@@ -22,36 +23,37 @@ export default function Home() {
 
   return (
     <div>
-      {/* Hero — matching Primers landing page layout */}
-      <section className="bg-gradient-to-br from-gray-50 via-white to-primer-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24">
+      {/* Hero with 3D scene */}
+      <section className="relative bg-gradient-to-br from-gray-50 via-white to-primer-50 overflow-hidden">
+        <Suspense fallback={null}>
+          <Hero3DScene />
+        </Suspense>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left: text + CTAs */}
             <div>
               <h1 className="text-5xl lg:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight">
                 Welcome to<br />
                 <span className="text-primer-600">Primers Store</span>
               </h1>
               <p className="mt-6 text-lg text-gray-600 leading-relaxed max-w-lg">
-                Your trusted marketplace for verified applications. Every app goes through our rigorous review process — quality and safety you can count on.
+                Your trusted marketplace for verified applications. Every app goes through rigorous review — quality and safety you can count on.
               </p>
               <div className="flex flex-wrap gap-4 mt-8">
-                <Link to="/store" className="bg-gray-900 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors shadow-lg shadow-gray-900/20">
+                <Link to="/store" className="bg-gray-900 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-all shadow-lg shadow-gray-900/20 hover:shadow-xl hover:shadow-gray-900/30 hover:-translate-y-0.5">
                   Get Started
                 </Link>
-                <Link to="/store" className="bg-white text-gray-700 px-8 py-3.5 rounded-xl font-semibold border-2 border-gray-300 hover:border-gray-400 transition-colors">
+                <Link to="/store" className="bg-white/80 backdrop-blur-sm text-gray-700 px-8 py-3.5 rounded-xl font-semibold border-2 border-gray-300 hover:border-gray-400 hover:bg-white transition-all">
                   Learn More
                 </Link>
               </div>
             </div>
-            {/* Right: Primers brand visual */}
             <div className="flex justify-center lg:justify-end">
-              <div className="relative">
-                <div className="absolute inset-0 bg-primer-400/20 blur-3xl rounded-full" />
+              <div className="relative group">
+                <div className="absolute -inset-4 bg-primer-400/20 blur-3xl rounded-full group-hover:bg-primer-400/30 transition-all duration-500" />
                 <img
                   src="/primers-mockup.jpg"
-                  alt="Primers Store on MacBook"
-                  className="relative rounded-2xl shadow-2xl max-w-full lg:max-w-lg object-cover border-4 border-white"
+                  alt="Primers Store"
+                  className="relative rounded-2xl shadow-2xl max-w-full lg:max-w-lg object-cover border-4 border-white/80 group-hover:scale-[1.02] transition-transform duration-500"
                 />
               </div>
             </div>
@@ -82,7 +84,7 @@ export default function Home() {
               <div><h2 className="text-2xl font-bold">Popular Apps</h2><p className="text-gray-600 text-sm mt-1">Most downloaded</p></div>
               <Link to="/store" className="text-primer-600 hover:text-primer-700 font-medium text-sm flex items-center gap-1">View all <ArrowRight className="w-4 h-4" /></Link>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{featuredApps.map(app => <AppCard key={app.id} app={app} />)}</div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{featuredApps.map(app => <AppCard3D key={app.id} app={app} />)}</div>
           </div>
         </section>
       )}

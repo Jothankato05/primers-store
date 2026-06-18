@@ -34,3 +34,10 @@
     @apply bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow;
   }
 }
+
+@layer utilities {
+  .perspective-\[1000px\] { perspective: 1000px; }
+  .translate-z-5 { transform: translateZ(5px); }
+  .translate-z-10 { transform: translateZ(10px); }
+  .translate-z-20 { transform: translateZ(20px); }
+}
