@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Search, User, Package, Settings, LogOut, Menu, X, Shield, PlusCircle } from 'lucide-react';
@@ -6,6 +6,7 @@ import { Search, User, Package, Settings, LogOut, Menu, X, Shield, PlusCircle } 
 export default function Navbar() {
   const { user, logout, isAdmin, isDeveloper } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -14,8 +15,11 @@ export default function Navbar() {
     e.preventDefault();
     if (search.trim()) {
       navigate(`/store?search=${encodeURIComponent(search.trim())}`);
+      setMenuOpen(false);
     }
   };
+
+  const isActive = (path) => location.pathname === path;
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -42,7 +46,12 @@ export default function Navbar() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-4">
-            <Link to="/store" className="text-sm text-gray-600 hover:text-gray-900 font-medium">Store</Link>
+            <Link
+              to="/store"
+              className={`text-sm font-medium transition-colors ${isActive('/store') ? 'text-primer-600' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              Store
+            </Link>
 
             {user ? (
               <div className="relative">
@@ -109,18 +118,18 @@ export default function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-2">
-          <form onSubmit={(e) => { handleSearch(e); setMenuOpen(false); }}>
+          <form onSubmit={handleSearch}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input type="text" placeholder="Search apps..." value={search} onChange={e => setSearch(e.target.value)} className="input-field pl-10 py-2 text-sm" />
             </div>
           </form>
-          <Link to="/store" className="block py-2 text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>Store</Link>
+          <Link to="/store" className={`block py-2 text-sm font-medium ${isActive('/store') ? 'text-primer-600' : 'text-gray-700'}`} onClick={() => setMenuOpen(false)}>Store</Link>
           {user ? (
             <>
-              <Link to="/dashboard" className="block py-2 text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>Dashboard</Link>
-              {isDeveloper && <Link to="/developer" className="block py-2 text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>Developer Console</Link>}
-              {isAdmin && <Link to="/admin" className="block py-2 text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>Admin Panel</Link>}
+              <Link to="/dashboard" className={`block py-2 text-sm font-medium ${isActive('/dashboard') ? 'text-primer-600' : 'text-gray-700'}`} onClick={() => setMenuOpen(false)}>Dashboard</Link>
+              {isDeveloper && <Link to="/developer" className={`block py-2 text-sm font-medium ${isActive('/developer') ? 'text-primer-600' : 'text-gray-700'}`} onClick={() => setMenuOpen(false)}>Developer Console</Link>}
+              {isAdmin && <Link to="/admin" className={`block py-2 text-sm font-medium ${isActive('/admin') ? 'text-primer-600' : 'text-gray-700'}`} onClick={() => setMenuOpen(false)}>Admin Panel</Link>}
               <button onClick={() => { logout(); setMenuOpen(false); }} className="block py-2 text-sm font-medium text-red-600">Sign Out</button>
             </>
           ) : (

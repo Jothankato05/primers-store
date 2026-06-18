@@ -58,8 +58,42 @@ export default function AppDetail() {
     finally { setSubmitting(false); }
   };
 
-  if (loading) return <div className="max-w-7xl mx-auto px-4 py-8"><div className="animate-pulse space-y-4"><div className="h-48 bg-gray-200 rounded-xl" /><div className="h-8 bg-gray-200 rounded w-1/3" /></div></div>;
-  if (!app) return <div className="max-w-7xl mx-auto px-4 py-20 text-center"><h2 className="text-2xl font-bold">App not found</h2><Link to="/store" className="text-primer-600 mt-2 inline-block">Back to Store</Link></div>;
+  if (loading) return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <div className="animate-pulse space-y-6">
+        <div className="h-4 bg-gray-200 rounded w-48" />
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex gap-5">
+              <div className="w-20 h-20 bg-gray-200 rounded-2xl shrink-0" />
+              <div className="flex-1 space-y-3">
+                <div className="h-7 bg-gray-200 rounded w-2/3" />
+                <div className="h-4 bg-gray-200 rounded w-1/3" />
+                <div className="h-4 bg-gray-200 rounded w-1/4" />
+              </div>
+            </div>
+            <div className="h-48 bg-gray-200 rounded-xl" />
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-3/4" />
+            </div>
+          </div>
+          <div className="h-64 bg-gray-200 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+  if (!app) return (
+    <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Download className="w-8 h-8 text-gray-400" />
+      </div>
+      <h2 className="text-2xl font-bold text-gray-900">App not found</h2>
+      <p className="text-gray-500 mt-2 mb-6">This app doesn't exist or may have been removed.</p>
+      <Link to="/store" className="btn-primary">Back to Store</Link>
+    </div>
+  );
 
   const PlatformIcon = platformIcons[app.latest_version?.platform] || Monitor;
 
@@ -239,7 +273,11 @@ export default function AppDetail() {
               <p className="text-xs text-gray-400">Category: {app.category}</p>
               <p className="text-xs text-gray-400">Published: {app.published_at ? new Date(app.published_at).toLocaleDateString() : 'Pending'}</p>
               {app.latest_version?.file_size && (
-                <p className="text-xs text-gray-400">Size: {(app.latest_version.file_size / 1024 / 1024).toFixed(1)} MB</p>
+                <p className="text-xs text-gray-400">
+                  Size: {app.latest_version.file_size >= 1024 * 1024 * 1024
+                    ? `${(app.latest_version.file_size / 1024 / 1024 / 1024).toFixed(2)} GB`
+                    : `${(app.latest_version.file_size / 1024 / 1024).toFixed(1)} MB`}
+                </p>
               )}
               {app.website && (
                 <a href={app.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primer-600 hover:text-primer-700">
