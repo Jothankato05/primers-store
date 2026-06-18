@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingScreen from './components/LoadingScreen';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy-load all pages — Three.js only loads when Home is visited
 const Home = lazy(() => import('./pages/Home'));
@@ -34,6 +35,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
+        <ErrorBoundary fallback={<LoadingScreen />}>
         <Suspense fallback={<LoadingScreen />}>
           <Routes>
             <Route path="/" element={<Home />} />
@@ -63,6 +65,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </main>
       <Footer />
     </div>
