@@ -35,10 +35,32 @@ if (!existingUser) {
   console.log('✅ User account created: user@primers.store / user123456');
 }
 
-// Seed categories if apps table is empty
+// Seed Presona app if apps table is empty
 const appCount = db.prepare("SELECT COUNT(*) as count FROM apps").get().count;
 if (appCount === 0) {
-  console.log('📦 No apps found. Add apps through the store UI!');
+  const devId = db.prepare("SELECT id FROM users WHERE email = 'dev@primers.store'").get()?.id;
+  if (devId) {
+    db.prepare(`
+      INSERT INTO apps (developer_id, name, slug, description, short_description, category, website, status, published_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', datetime('now'))
+    `).run(
+      devId,
+      'Presona',
+      'presona',
+      'Presona is a fully offline AI agent that knows your work, not just your files. It tracks your projects, detects what\'s active, blocked, or going stale, cleans up your storage, and delivers a daily narrative of everything you\'re working on — all powered by PrimersGPT running entirely on your machine.\n\n**Features:**\n• Project tracking with active/blocked/stale detection\n• Daily work narrative generation\n• Storage cleanup and duplicate detection\n• System tray operation (stays alive when window closed)\n• Desktop notifications for blocked/stale projects\n• Zero cloud, zero login, zero subscription\n\n**Powered by PrimersGPT** — built on phi4-mini and nomic-embed-text through a fully hidden Ollama layer. The user never sees Ollama. They only ever see PrimersGPT.\n\nYour data never leaves your machine. No cloud. No subscription. No account.',
+      'Your personal AI agent. Fully offline. Knows your work. Powered by PrimersGPT.',
+      'Productivity',
+      'https://github.com/Jothankato05/primers-store/releases/tag/v1.0.0'
+    );
+    console.log('✅ Presona app seeded');
+
+    // Seed Presona version with GitHub download URL
+    db.prepare(`
+      INSERT INTO app_versions (app_id, version, changelog, file_url, file_size, platform, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'approved')
+    `).run(1, '1.0.0', 'Initial release — the first app on Primers Store.', 'https://github.com/Jothankato05/primers-store/releases/download/v1.0.0/Presona-Installer.exe', 1640000000, 'windows');
+    console.log('✅ Presona v1.0.0 version seeded');
+  }
 }
 
 console.log('🌱 Seed complete!');
