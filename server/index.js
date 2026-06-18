@@ -48,7 +48,6 @@ app.get('/api/health', (req, res) => {
 
 // Serve React client in production (if built)
 const distPath = path.join(__dirname, '..', 'client', 'dist');
-const fs = require('fs');
 if (process.env.NODE_ENV === 'production' && fs.existsSync(path.join(distPath, 'index.html'))) {
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
