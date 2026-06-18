@@ -24,10 +24,12 @@ export default function EditApp() {
   const [newBanner, setNewBanner] = useState(null);
   const [newScreenshots, setNewScreenshots] = useState([]);
 
-  // New version form
   const [newVersion, setNewVersion] = useState({ version: '', changelog: '', platform: 'windows', min_os_version: '' });
   const [newVersionFile, setNewVersionFile] = useState(null);
   const [showVersionForm, setShowVersionForm] = useState(false);
+  const [versionUseExternalUrl, setVersionUseExternalUrl] = useState(false);
+  const [versionExternalUrl, setVersionExternalUrl] = useState('');
+  const [versionExternalSize, setVersionExternalSize] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('primers_token');
@@ -77,12 +79,17 @@ export default function EditApp() {
 
   const handleAddVersion = async (e) => {
     e.preventDefault();
-    if (!newVersion.version || !newVersionFile) return toast.error('Version and file are required');
+    if (!newVersion.version || (!newVersionFile && !versionExternalUrl)) return toast.error('Version and either a file or external URL are required');
     setSaving(true);
     try {
       const formData = new FormData();
       Object.entries(newVersion).forEach(([k, v]) => { if (v) formData.append(k, v); });
-      formData.append('app_file', newVersionFile);
+      if (newVersionFile) {
+        formData.append('app_file', newVersionFile);
+      } else {
+        formData.append('external_file_url', versionExternalUrl);
+        if (versionExternalSize) formData.append('external_file_size', versionExternalSize);
+      }
 
       const token = localStorage.getItem('primers_token');
       const res = await fetch(`/api/apps/${id}/versions`, {
@@ -96,7 +103,6 @@ export default function EditApp() {
       toast.success('New version submitted for review');
       setShowVersionForm(false);
       setNewVersionFile(null);
-      // Refresh
       const appRes = await fetch(`/api/admin/apps/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
       const appData = await appRes.json();
       setApp(appData.app);
@@ -162,7 +168,6 @@ export default function EditApp() {
         </div>
       </div>
 
-      {/* Edit Form */}
       <form onSubmit={handleSave} className="space-y-6">
         <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-lg">App Details</h2>
@@ -202,10 +207,8 @@ export default function EditApp() {
           </div>
         </div>
 
-        {/* Media Updates */}
         <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-lg">Update Media</h2>
-
           <div>
             <label className="block text-sm font-medium mb-1">New Icon</label>
             <div {...iconDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center cursor-pointer hover:border-primer-400">
@@ -224,8 +227,6 @@ export default function EditApp() {
               ) : <p className="text-sm text-gray-500">Drop new banner (optional)</p>}
             </div>
           </div>
-
-          {/* Existing screenshots */}
           {app.screenshots?.length > 0 && (
             <div>
               <label className="block text-sm font-medium mb-1">Current Screenshots</label>
@@ -241,7 +242,6 @@ export default function EditApp() {
               </div>
             </div>
           )}
-
           <div>
             <label className="block text-sm font-medium mb-1">Add Screenshots</label>
             <div {...screenshotsDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center cursor-pointer hover:border-primer-400">
@@ -268,7 +268,6 @@ export default function EditApp() {
         </div>
       </form>
 
-      {/* Versions Section */}
       <div className="mt-8 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-lg">Versions</h2>
@@ -319,22 +318,44 @@ export default function EditApp() {
               <textarea value={newVersion.changelog} onChange={updateVersion('changelog')} className="input-field" rows={3} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">App File *</label>
-              <div {...versionFileDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primer-400">
-                <input {...versionFileDropzone.getInputProps()} />
-                {newVersionFile ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <FileArchive className="w-5 h-5 text-green-600" />
-                    <span className="text-green-600">{newVersionFile.name}</span>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setNewVersionFile(null); }}><X className="w-4 h-4 text-red-500" /></button>
-                  </div>
-                ) : (
-                  <div className="text-gray-500">
-                    <Upload className="w-6 h-6 mx-auto" />
-                    <p className="text-sm mt-1">Drop app file or click</p>
-                  </div>
-                )}
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium">App File *</label>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs">
+                  <button type="button" onClick={() => setVersionUseExternalUrl(false)}
+                    className={`px-3 py-1 font-medium transition-colors ${!versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    Upload
+                  </button>
+                  <button type="button" onClick={() => setVersionUseExternalUrl(true)}
+                    className={`px-3 py-1 font-medium transition-colors ${versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    External URL
+                  </button>
+                </div>
               </div>
+              {versionUseExternalUrl ? (
+                <div className="space-y-2">
+                  <input type="url" value={versionExternalUrl} onChange={e => setVersionExternalUrl(e.target.value)}
+                    className="input-field" placeholder="https://github.com/.../releases/download/v1.0.0/App.exe" />
+                  <input type="number" value={versionExternalSize} onChange={e => setVersionExternalSize(e.target.value)}
+                    className="input-field" placeholder="File size in bytes (optional)" />
+                  <p className="text-xs text-gray-500">For files over 500 MB — host on GitHub Releases, Google Drive, etc.</p>
+                </div>
+              ) : (
+                <div {...versionFileDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primer-400">
+                  <input {...versionFileDropzone.getInputProps()} />
+                  {newVersionFile ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <FileArchive className="w-5 h-5 text-green-600" />
+                      <span className="text-green-600">{newVersionFile.name}</span>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setNewVersionFile(null); }}><X className="w-4 h-4 text-red-500" /></button>
+                    </div>
+                  ) : (
+                    <div className="text-gray-500">
+                      <Upload className="w-6 h-6 mx-auto" />
+                      <p className="text-sm mt-1">Drop app file or click (max 500 MB)</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => setShowVersionForm(false)} className="btn-secondary btn-sm">Cancel</button>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Users, Package, Download, Star, Clock, CheckCircle, XCircle, Search, Eye, UserCheck, Trash2, AlertTriangle } from 'lucide-react';
+import { Shield, Users, Package, Download, Star, Clock, CheckCircle, XCircle, Search, Eye, UserCheck, Trash2, AlertTriangle, Link as LinkIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
@@ -88,6 +88,27 @@ export default function AdminDashboard() {
 
   const handleSearch = (e) => { e.preventDefault(); loadApps(statusFilter, searchTerm); };
 
+  const updateVersionUrl = async (appId, versionId, fileUrl, fileSize) => {
+    try {
+      await apiRequest(`/admin/apps/${appId}/versions/${versionId}/url`, {
+        method: 'PATCH',
+        body: JSON.stringify({ file_url: fileUrl, file_size: fileSize ? Number(fileSize) : undefined }),
+      });
+      toast.success('Download URL updated');
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const [appDetail, setAppDetail] = useState(null);
+  const [editingVersionUrl, setEditingVersionUrl] = useState({});
+
+  const loadAppDetail = async (appId) => {
+    const data = await fetch(`/api/admin/apps/${appId}`, { headers }).then(r => r.json());
+    setAppDetail(data.app);
+    const initial = {};
+    (data.app.versions || []).forEach(v => { initial[v.id] = { url: v.file_url || '', size: v.file_size || '' }; });
+    setEditingVersionUrl(initial);
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Shield },
     { id: 'apps', label: 'Apps', icon: Package, badge: stats.pending_apps },
@@ -97,11 +118,11 @@ export default function AdminDashboard() {
   ];
 
   return (
+    <>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <h1 className="text-3xl font-bold mb-2">Admin Panel</h1>
       <p className="text-gray-600 mb-8">Manage apps, users, and review submissions</p>
 
-      {/* Tabs */}
       <div className="flex flex-wrap gap-2 mb-8">
         {tabs.map(t => (
           <button
@@ -121,7 +142,6 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Overview Tab */}
       {tab === 'overview' && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
@@ -147,7 +167,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Apps Tab */}
       {tab === 'apps' && (
         <div>
           <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -217,10 +236,7 @@ export default function AdminDashboard() {
                       {app.status === 'suspended' && (
                         <button onClick={() => reviewApp(app.id, 'approved')} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700">Reinstate</button>
                       )}
-                      <button onClick={async () => {
-                        const data = await fetch(`/api/admin/apps/${app.id}`, { headers }).then(r => r.json());
-                        alert(JSON.stringify(data.app, null, 2));
-                      }} className="btn-secondary btn-sm flex items-center gap-1">
+                      <button onClick={() => loadAppDetail(app.id)} className="btn-secondary btn-sm flex items-center gap-1">
                         <Eye className="w-4 h-4" /> Details
                       </button>
                     </div>
@@ -232,7 +248,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Users Tab */}
       {tab === 'users' && (
         <div>
           <div className="mb-4">
@@ -302,7 +317,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Developer Applications Tab */}
       {tab === 'developers' && (
         <div>
           <h2 className="font-semibold text-lg mb-4">Pending Developer Applications ({devApps.length})</h2>
@@ -334,7 +348,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Reviews Tab */}
       {tab === 'reviews' && (
         <div>
           <h2 className="font-semibold text-lg mb-4">Reviews</h2>
@@ -366,5 +379,75 @@ export default function AdminDashboard() {
         </div>
       )}
     </div>
+
+    {appDetail && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAppDetail(null)}>
+        <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b border-gray-200 flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-bold">{appDetail.name}</h2>
+              <p className="text-sm text-gray-500">by {appDetail.developer_name} • {appDetail.category}</p>
+            </div>
+            <button onClick={() => setAppDetail(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+          </div>
+          <div className="p-6 space-y-6">
+            <div>
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><LinkIcon className="w-4 h-4" /> Versions &amp; Download URLs</h3>
+              {(!appDetail.versions || appDetail.versions.length === 0) ? (
+                <p className="text-sm text-gray-500">No versions</p>
+              ) : (
+                <div className="space-y-3">
+                  {appDetail.versions.map(v => (
+                    <div key={v.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">v{v.version} — {v.platform}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          v.status === 'approved' ? 'bg-green-100 text-green-700' :
+                          v.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>{v.status}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Size: {v.file_size ? `${(v.file_size / 1024 / 1024).toFixed(1)} MB` : 'unknown'}
+                      </p>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-600">Download URL</label>
+                        <input
+                          type="url"
+                          value={editingVersionUrl[v.id]?.url ?? v.file_url ?? ''}
+                          onChange={e => setEditingVersionUrl(prev => ({ ...prev, [v.id]: { ...prev[v.id], url: e.target.value } }))}
+                          className="input-field text-xs"
+                          placeholder="https://..."
+                        />
+                        <input
+                          type="number"
+                          value={editingVersionUrl[v.id]?.size ?? v.file_size ?? ''}
+                          onChange={e => setEditingVersionUrl(prev => ({ ...prev, [v.id]: { ...prev[v.id], size: e.target.value } }))}
+                          className="input-field text-xs"
+                          placeholder="File size in bytes (optional)"
+                        />
+                        <button
+                          onClick={() => updateVersionUrl(appDetail.id, v.id, editingVersionUrl[v.id]?.url, editingVersionUrl[v.id]?.size)}
+                          className="btn-primary btn-sm w-full mt-1"
+                        >
+                          Save URL
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {appDetail.review_notes && (
+              <div>
+                <h3 className="font-semibold mb-1">Review Notes</h3>
+                <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{appDetail.review_notes}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

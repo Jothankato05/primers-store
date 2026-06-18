@@ -8,6 +8,12 @@ const { getDb, hashPassword } = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const ALLOWED_ORIGINS = [
+  'https://primers-store-ruddy.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3001',
+];
+
 // Auto-seed demo accounts on first run
 function autoSeed() {
   const db = getDb();
@@ -42,8 +48,28 @@ function autoSeed() {
 }
 autoSeed();
 
+// Clean up expired sessions on startup
+function cleanupSessions() {
+  try {
+    const db = getDb();
+    const result = db.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')").run();
+    if (result.changes > 0) console.log(`🧹 Removed ${result.changes} expired sessions`);
+  } catch (e) {
+    console.error('Session cleanup error:', e.message);
+  }
+}
+cleanupSessions();
+setInterval(cleanupSessions, 60 * 60 * 1000); // hourly
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error('CORS: origin not allowed'));
+  },
+  credentials: true,
+}));
+app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
