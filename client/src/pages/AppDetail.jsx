@@ -17,6 +17,8 @@ export default function AppDetail() {
   const [reviewTitle, setReviewTitle] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const [installProgress, setInstallProgress] = useState(0);
 
   useEffect(() => {
     fetch(`/api/apps/${slug}`)
@@ -26,12 +28,29 @@ export default function AppDetail() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const handleDownload = async () => {
+  const handleInstall = async () => {
+    if (!user) {
+      toast.error('Please sign in to install');
+      return;
+    }
+
+    setInstalling(true);
+    setInstallProgress(0);
+
     try {
-      await fetch(`/api/apps/${app.id}/download`, { method: 'POST',
-        headers: user ? { 'Authorization': `Bearer ${localStorage.getItem('primers_token')}` } : {}
-      });
-      toast.success('Download started!');
+      // Simulate download progress
+      const progressInterval = setInterval(() => {
+        setInstallProgress(prev => Math.min(prev + Math.random() * 30, 90));
+      }, 300);
+
+      // Record installation
+      await apiRequest(`/apps/${slug}/install`, { method: 'POST' });
+
+      // Complete progress
+      clearInterval(progressInterval);
+      setInstallProgress(100);
+
+      // Download the file
       if (app.latest_version?.file_url) {
         const link = document.createElement('a');
         link.href = app.latest_version.file_url;
@@ -40,7 +59,30 @@ export default function AppDetail() {
         link.click();
         document.body.removeChild(link);
       }
-    } catch { toast.error('Download failed'); }
+
+      toast.success('App installed!');
+      setTimeout(() => {
+        setInstalling(false);
+        setInstallProgress(0);
+        setApp({ ...app, is_installed: true });
+      }, 500);
+    } catch (e) {
+      toast.error(e.message || 'Installation failed');
+      setInstalling(false);
+      setInstallProgress(0);
+    }
+  };
+
+  const handleUninstall = async () => {
+    if (!user) return;
+
+    try {
+      await apiRequest(`/apps/${slug}/install`, { method: 'DELETE' });
+      toast.success('App uninstalled');
+      setApp({ ...app, is_installed: false });
+    } catch (e) {
+      toast.error(e.message || 'Uninstall failed');
+    }
   };
 
   const submitReview = async (e) => {
@@ -250,9 +292,37 @@ export default function AppDetail() {
               <div className="text-lg font-semibold text-green-600 mb-3">Free</div>
             )}
 
-            <button onClick={handleDownload} className="btn-primary w-full flex items-center justify-center gap-2 mb-4">
-              <Download className="w-5 h-5" /> Install
-            </button>
+            {app.is_installed ? (
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between">
+                  <span className="inline-block px-3 py-1 bg-green-50 text-green-700 text-sm font-medium rounded-full">✓ Installed</span>
+                </div>
+                <button onClick={handleUninstall} className="btn-secondary w-full flex items-center justify-center gap-2">
+                  Uninstall
+                </button>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <button
+                  onClick={handleInstall}
+                  disabled={installing}
+                  className="btn-primary w-full flex items-center justify-center gap-2 mb-2"
+                >
+                  <Download className="w-5 h-5" /> {installing ? 'Installing...' : 'Install'}
+                </button>
+                {installing && (
+                  <div className="space-y-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-primer-500 to-primer-600 h-full transition-all duration-300"
+                        style={{ width: `${installProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 text-center">{Math.round(installProgress)}% Complete</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2 text-gray-600">

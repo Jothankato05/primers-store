@@ -143,6 +143,19 @@ function initTables() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS app_installations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      app_id INTEGER NOT NULL,
+      version_id INTEGER,
+      installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
+      FOREIGN KEY (version_id) REFERENCES app_versions(id),
+      UNIQUE(user_id, app_id)
+    );
   `);
 
   // Create indexes
@@ -156,6 +169,8 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
     CREATE INDEX IF NOT EXISTS idx_downloads_app ON downloads(app_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+    CREATE INDEX IF NOT EXISTS idx_installations_user ON app_installations(user_id);
+    CREATE INDEX IF NOT EXISTS idx_installations_app ON app_installations(app_id);
   `);
 }
 

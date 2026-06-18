@@ -142,6 +142,16 @@ router.get('/:slug', (req, res) => {
     app.latest_version.file_url = 'https://archive.org/download/presona-installer/Presona-Installer.exe';
   }
 
+  // Check if user has installed this app
+  if (req.user) {
+    const installation = db.prepare(
+      'SELECT id FROM app_installations WHERE user_id = ? AND app_id = ?'
+    ).get(req.user.id, app.id);
+    app.is_installed = !!installation;
+  } else {
+    app.is_installed = false;
+  }
+
   const reviews = db.prepare(
     'SELECT r.*, u.username, u.avatar_url FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.app_id = ? ORDER BY r.created_at DESC LIMIT 10'
   ).all(app.id);
@@ -428,6 +438,55 @@ router.post('/:slug/reviews/:reviewId/vote', requireAuth, (req, res) => {
 
   db.prepare('UPDATE reviews SET helpful_count = ? WHERE id = ?').run(helpful.count, req.params.reviewId);
   res.json({ helpful_count: helpful.count });
+});
+
+// POST /apps/:slug/install - Install app for user
+router.post('/:slug/install', requireAuth, (req, res) => {
+  const db = getDb();
+  const app = db.prepare('SELECT id FROM apps WHERE slug = ?').get(req.params.slug);
+
+  if (!app) {
+    return res.status(404).json({ error: 'App not found' });
+  }
+
+  const latestVersion = db.prepare(
+    "SELECT id FROM app_versions WHERE app_id = ? AND status = 'approved' ORDER BY created_at DESC LIMIT 1"
+  ).get(app.id);
+
+  try {
+    db.prepare(`
+      INSERT OR REPLACE INTO app_installations (user_id, app_id, version_id, installed_at, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run(req.user.id, app.id, latestVersion?.id || null);
+
+    res.json({ success: true, message: 'App installed' });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// DELETE /apps/:slug/install - Uninstall app for user
+router.delete('/:slug/install', requireAuth, (req, res) => {
+  const db = getDb();
+  const app = db.prepare('SELECT id FROM apps WHERE slug = ?').get(req.params.slug);
+
+  if (!app) {
+    return res.status(404).json({ error: 'App not found' });
+  }
+
+  try {
+    const result = db.prepare(
+      'DELETE FROM app_installations WHERE user_id = ? AND app_id = ?'
+    ).run(req.user.id, app.id);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'App not installed' });
+    }
+
+    res.json({ success: true, message: 'App uninstalled' });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
 module.exports = router;
