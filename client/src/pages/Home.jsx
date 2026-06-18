@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppCard3D from '../components/AppCard3D';
 import Hero3DScene from '../components/Hero3DScene';
-import { Upload, Shield, Download, Star, ArrowRight, Monitor, Zap, Users } from 'lucide-react';
+import ErrorBoundary from '../components/ErrorBoundary';
+import { Upload, Shield, Download, Star, ArrowRight, Zap, Users } from 'lucide-react';
 
 export default function Home() {
   const { user } = useAuth();
@@ -25,9 +26,11 @@ export default function Home() {
     <div>
       {/* Hero with 3D scene */}
       <section className="relative bg-gradient-to-br from-gray-50 via-white to-primer-50 overflow-hidden">
-        <Suspense fallback={null}>
-          <Hero3DScene />
-        </Suspense>
+        <ErrorBoundary fallback={null}>
+          <Suspense fallback={null}>
+            <Hero3DScene />
+          </Suspense>
+        </ErrorBoundary>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
