@@ -16,6 +16,7 @@ const DeveloperDashboard = lazy(() => import('./pages/DeveloperDashboard'));
 const SubmitApp = lazy(() => import('./pages/SubmitApp'));
 const EditApp = lazy(() => import('./pages/EditApp'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function PrivateRoute({ children, roles }) {
   const { user, loading } = useAuth();
@@ -58,6 +59,8 @@ export default function App() {
             <Route path="/admin" element={
               <PrivateRoute roles={['admin']}><AdminDashboard /></PrivateRoute>
             } />
+
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </main>
