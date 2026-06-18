@@ -1,10 +1,11 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppCard3D from '../components/AppCard3D';
-import Hero3DScene from '../components/Hero3DScene';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { Upload, Shield, Download, Star, ArrowRight, Zap, Users } from 'lucide-react';
+
+const Hero3DScene = lazy(() => import('../components/Hero3DScene'));
 
 export default function Home() {
   const { user } = useAuth();
