@@ -68,8 +68,13 @@ export default function AppCard3D({ app }) {
             <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
               <span className="flex items-center gap-1"><Monitor className="w-3.5 h-3.5" />{app.latest_version?.platform || 'Windows'}</span>
               {app.price > 0 ? <span className="font-semibold text-primer-600">${app.price.toFixed(2)}</span> : <span className="text-green-600 font-medium">Free</span>}
-              <span className="flex items-center gap-1"><Download className="w-3.5 h-3.5" />{app.downloads_count.toLocaleString()}</span>
+              <span className="flex items-center gap-1 ml-auto"><Download className="w-3.5 h-3.5" />{app.downloads_count.toLocaleString()}</span>
             </div>
+            {app.category && (
+              <div className="mt-2">
+                <span className="inline-block text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">{app.category}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
