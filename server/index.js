@@ -22,6 +22,23 @@ function autoSeed() {
     db.prepare(`INSERT INTO users (username, email, password_hash, display_name, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)`).run('demo-user', 'user@primers.store', user_hash, 'Demo User', 'user', 1);
     console.log('✅ Demo accounts created');
   }
+  // Seed Presona app
+  const appCount = db.prepare('SELECT COUNT(*) as count FROM apps').get().count;
+  if (appCount === 0) {
+    console.log('📦 Seeding Presona...');
+    const devId = db.prepare("SELECT id FROM users WHERE email = 'dev@primers.store'").get().id;
+    db.prepare(`INSERT INTO apps (developer_id, name, slug, description, short_description, category, website, status, published_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', datetime('now'))`).run(
+      devId, 'Presona', 'presona',
+      'Presona is a fully offline AI agent that knows your work, not just your files. It tracks your projects, detects what\'s active, blocked, or going stale, cleans up your storage, and delivers a daily narrative of everything you\'re working on — all powered by PrimersGPT running entirely on your machine.\n\nFeatures:\n• Project tracking with active/blocked/stale detection\n• Daily work narrative generation\n• Storage cleanup and duplicate detection\n• System tray operation (stays alive when window closed)\n• Desktop notifications\n• Zero cloud, zero login, zero subscription\n\nPowered by PrimersGPT — built on phi4-mini and nomic-embed-text through a fully hidden Ollama layer.',
+      'Your personal AI agent. Fully offline. Knows your work. Powered by PrimersGPT.', 'Productivity',
+      'https://github.com/Jothankato05/primers-store/releases/tag/v1.0.0'
+    );
+    db.prepare(`INSERT INTO app_versions (app_id, version, changelog, file_url, file_size, platform, status) VALUES (?, ?, ?, ?, ?, ?, 'approved')`).run(
+      1, '1.0.0', 'Initial release — the first app on Primers Store.',
+      'https://github.com/Jothankato05/primers-store/releases/download/v1.0.0/Presona-Installer.exe', 1640000000, 'windows'
+    );
+    console.log('✅ Presona seeded');
+  }
 }
 autoSeed();
 
