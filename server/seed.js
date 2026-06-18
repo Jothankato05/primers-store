@@ -54,11 +54,11 @@ if (appCount === 0) {
     );
     console.log('✅ Presona app seeded');
 
-    // Seed Presona version with GitHub download URL
+    // Seed Presona version with Internet Archive download URL
     db.prepare(`
       INSERT INTO app_versions (app_id, version, changelog, file_url, file_size, platform, status)
       VALUES (?, ?, ?, ?, ?, ?, 'approved')
-    `).run(1, '1.0.0', 'Initial release — the first app on Primers Store.', 'https://github.com/Jothankato05/primers-store/releases/download/v1.0.0/Presona-Installer.exe', 1640000000, 'windows');
+    `).run(1, '1.0.0', 'Initial release — the first app on Primers Store.', 'https://archive.org/download/presona-installer/Presona-Installer.exe', 1640000000, 'windows');
     console.log('✅ Presona v1.0.0 version seeded');
   }
 }
