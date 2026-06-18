@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import AppCard from '../components/AppCard';
+import AppCard3D from '../components/AppCard3D';
 import { Search, Filter, X } from 'lucide-react';
 
 export default function Store() {
@@ -38,7 +38,7 @@ export default function Store() {
       </div>
       {loading ? <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{[...Array(6)].map((_, i) => <div key={i} className="card p-5 animate-pulse"><div className="flex gap-4"><div className="w-14 h-14 bg-gray-200 rounded-xl" /><div className="flex-1 space-y-2"><div className="h-5 bg-gray-200 rounded w-3/4" /><div className="h-3 bg-gray-200 rounded w-1/2" /><div className="h-3 bg-gray-200 rounded w-full" /></div></div></div>)}</div>
       : apps.length === 0 ? <div className="text-center py-20"><Filter className="w-12 h-12 text-gray-300 mx-auto" /><h3 className="mt-4 text-lg font-semibold text-gray-700">No apps found</h3><p className="text-gray-500 mt-1">Try adjusting your search</p></div>
-      : <><p className="text-sm text-gray-500 mb-4">{total} app{total !== 1 ? 's' : ''} found</p><div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{apps.map(app => <AppCard key={app.id} app={app} />)}</div>
+      : <><p className="text-sm text-gray-500 mb-4">{total} app{total !== 1 ? 's' : ''} found</p><div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{apps.map(app => <AppCard3D key={app.id} app={app} />)}</div>
         {totalPages > 1 && <div className="flex justify-center items-center gap-2 mt-8"><button onClick={() => updateFilter('page', String(page - 1))} disabled={page === 1} className="btn-secondary btn-sm">Previous</button>{[...Array(totalPages)].map((_, i) => <button key={i} onClick={() => updateFilter('page', String(i + 1))} className={`w-9 h-9 rounded-lg text-sm font-medium ${page === i + 1 ? 'bg-primer-600 text-white' : 'hover:bg-gray-100 text-gray-700'}`}>{i + 1}</button>)}<button onClick={() => updateFilter('page', String(page + 1))} disabled={page === totalPages} className="btn-secondary btn-sm">Next</button></div>}</>
       }
     </div>
