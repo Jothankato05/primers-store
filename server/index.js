@@ -1,10 +1,29 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { authMiddleware } = require('./middleware/auth');
+const { getDb, hashPassword } = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Auto-seed demo accounts on first run
+function autoSeed() {
+  const db = getDb();
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  if (userCount === 0) {
+    console.log('🌱 First run — seeding demo accounts...');
+    const password_hash = hashPassword('admin123');
+    db.prepare(`INSERT INTO users (username, email, password_hash, display_name, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)`).run('admin', 'admin@primers.store', password_hash, 'Primers Admin', 'admin', 1);
+    const dev_hash = hashPassword('dev123456');
+    db.prepare(`INSERT INTO users (username, email, password_hash, display_name, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)`).run('demo-dev', 'dev@primers.store', dev_hash, 'Demo Developer', 'developer', 1);
+    const user_hash = hashPassword('user123456');
+    db.prepare(`INSERT INTO users (username, email, password_hash, display_name, role, email_verified) VALUES (?, ?, ?, ?, ?, ?)`).run('demo-user', 'user@primers.store', user_hash, 'Demo User', 'user', 1);
+    console.log('✅ Demo accounts created');
+  }
+}
+autoSeed();
 
 // Middleware
 app.use(cors());
