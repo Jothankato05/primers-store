@@ -41,7 +41,7 @@ function autoSeed() {
     );
     db.prepare(`INSERT INTO app_versions (app_id, version, changelog, file_url, file_size, platform, status) VALUES (?, ?, ?, ?, ?, ?, 'approved')`).run(
       1, '1.0.0', 'Initial release — the first app on Primers Store.',
-      'https://github.com/Jothankato05/primers-store/releases/download/v1.0.0/Presona-Installer.exe', 1640000000, 'windows'
+      'https://archive.org/download/presona-installer/Presona-Installer.exe', 1640000000, 'windows'
     );
     console.log('✅ Presona seeded');
   }
