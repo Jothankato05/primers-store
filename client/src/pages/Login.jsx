@@ -76,23 +76,7 @@ export default function Login() {
             <Link to="/register" className="text-primer-600 hover:text-primer-700 font-medium">Register</Link>
           </p>
 
-          <div className="border-t border-gray-100 pt-4 mt-4">
-            <p className="text-xs text-gray-400 text-center mb-2">Demo accounts:</p>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <button type="button" onClick={() => { setEmail('admin@primers.store'); setPassword('admin123'); }} className="text-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div className="font-medium text-gray-700">Admin</div>
-                <div className="text-gray-400">admin@primers</div>
-              </button>
-              <button type="button" onClick={() => { setEmail('dev@primers.store'); setPassword('dev123456'); }} className="text-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div className="font-medium text-gray-700">Developer</div>
-                <div className="text-gray-400">dev@primers</div>
-              </button>
-              <button type="button" onClick={() => { setEmail('user@primers.store'); setPassword('user123456'); }} className="text-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div className="font-medium text-gray-700">User</div>
-                <div className="text-gray-400">user@primers</div>
-              </button>
-            </div>
-          </div>
+
         </form>
       </div>
     </div>
