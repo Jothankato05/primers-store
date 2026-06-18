@@ -3,7 +3,7 @@ services:
     name: primers-api
     env: node
     region: ohio
-    buildCommand: npm install && npm run seed
+    buildCommand: npm install
     startCommand: NODE_ENV=production node server/index.js
     envVars:
       - key: NODE_ENV

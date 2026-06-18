@@ -32,6 +32,9 @@ export default function SubmitApp() {
   const [banner, setBanner] = useState(null);
   const [screenshots, setScreenshots] = useState([]);
   const [appFile, setAppFile] = useState(null);
+  const [useExternalUrl, setUseExternalUrl] = useState(false);
+  const [externalFileUrl, setExternalFileUrl] = useState('');
+  const [externalFileSize, setExternalFileSize] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
@@ -62,7 +65,7 @@ export default function SubmitApp() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.description) return toast.error('Name and description are required');
-    if (!appFile) return toast.error('Please upload your app file');
+    if (!appFile && !externalFileUrl) return toast.error('Please upload an app file or provide an external download URL');
 
     setSubmitting(true);
     try {
@@ -71,7 +74,12 @@ export default function SubmitApp() {
       if (icon) formData.append('icon', icon);
       if (banner) formData.append('banner', banner);
       screenshots.forEach(s => formData.append('screenshots', s));
-      formData.append('app_file', appFile);
+      if (appFile) {
+        formData.append('app_file', appFile);
+      } else {
+        formData.append('external_file_url', externalFileUrl);
+        if (externalFileSize) formData.append('external_file_size', externalFileSize);
+      }
 
       const token = localStorage.getItem('primers_token');
       const res = await fetch('/api/apps', {
@@ -97,7 +105,6 @@ export default function SubmitApp() {
       <p className="text-gray-600 mb-8">Fill in the details below. Your app will be reviewed before going live.</p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Info */}
         <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-lg">Basic Information</h2>
           <div>
@@ -136,11 +143,8 @@ export default function SubmitApp() {
           </div>
         </div>
 
-        {/* Media */}
         <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-lg">Media</h2>
-
-          {/* Icon */}
           <div>
             <label className="block text-sm font-medium mb-1">App Icon</label>
             <div {...iconDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primer-400 transition-colors">
@@ -161,8 +165,6 @@ export default function SubmitApp() {
               )}
             </div>
           </div>
-
-          {/* Banner */}
           <div>
             <label className="block text-sm font-medium mb-1">Banner Image</label>
             <div {...bannerDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primer-400 transition-colors">
@@ -183,8 +185,6 @@ export default function SubmitApp() {
               )}
             </div>
           </div>
-
-          {/* Screenshots */}
           <div>
             <label className="block text-sm font-medium mb-1">Screenshots ({screenshots.length}/10)</label>
             <div {...screenshotsDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primer-400 transition-colors">
@@ -208,7 +208,6 @@ export default function SubmitApp() {
           </div>
         </div>
 
-        {/* Version & File */}
         <div className="card p-6 space-y-4">
           <h2 className="font-semibold text-lg">App File & Version</h2>
           <div className="grid sm:grid-cols-2 gap-4">
@@ -232,28 +231,53 @@ export default function SubmitApp() {
             <input type="text" value={form.min_os_version} onChange={update('min_os_version')} className="input-field" placeholder="e.g. Windows 10, macOS 12" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">App File *</label>
-            <div {...appFileDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-primer-400 transition-colors">
-              <input {...appFileDropzone.getInputProps()} />
-              {appFile ? (
-                <div className="flex items-center justify-center gap-2">
-                  <FileArchive className="w-5 h-5 text-green-600" />
-                  <span className="text-green-600 font-medium">{appFile.name}</span>
-                  <span className="text-gray-400 text-sm">({(appFile.size / 1024 / 1024).toFixed(1)} MB)</span>
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setAppFile(null); }} className="text-red-500 hover:text-red-700 ml-2"><X className="w-4 h-4" /></button>
-                </div>
-              ) : (
-                <div className="text-gray-500">
-                  <FileArchive className="w-8 h-8 mx-auto" />
-                  <p className="text-sm mt-2 font-medium">Drop your app file here or click to browse</p>
-                  <p className="text-xs mt-1">ZIP, EXE, DMG, APK, DEB, RPM, etc. (max 500MB)</p>
-                </div>
-              )}
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">App File *</label>
+              <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs">
+                <button type="button" onClick={() => setUseExternalUrl(false)}
+                  className={`px-3 py-1 font-medium transition-colors ${!useExternalUrl ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                  Upload File
+                </button>
+                <button type="button" onClick={() => setUseExternalUrl(true)}
+                  className={`px-3 py-1 font-medium transition-colors ${useExternalUrl ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                  External URL
+                </button>
+              </div>
             </div>
+            {useExternalUrl ? (
+              <div className="space-y-2">
+                <input
+                  type="url" value={externalFileUrl} onChange={e => setExternalFileUrl(e.target.value)}
+                  className="input-field" placeholder="https://github.com/.../releases/download/v1.0.0/App-Installer.exe"
+                />
+                <input
+                  type="number" value={externalFileSize} onChange={e => setExternalFileSize(e.target.value)}
+                  className="input-field" placeholder="File size in bytes (optional, e.g. 1640000000 for 1.5 GB)"
+                />
+                <p className="text-xs text-gray-500">Use this for files over 500 MB. Host on GitHub Releases, Google Drive, etc.</p>
+              </div>
+            ) : (
+              <div {...appFileDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-primer-400 transition-colors">
+                <input {...appFileDropzone.getInputProps()} />
+                {appFile ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileArchive className="w-5 h-5 text-green-600" />
+                    <span className="text-green-600 font-medium">{appFile.name}</span>
+                    <span className="text-gray-400 text-sm">({(appFile.size / 1024 / 1024).toFixed(1)} MB)</span>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setAppFile(null); }} className="text-red-500 hover:text-red-700 ml-2"><X className="w-4 h-4" /></button>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">
+                    <FileArchive className="w-8 h-8 mx-auto" />
+                    <p className="text-sm mt-2 font-medium">Drop your app file here or click to browse</p>
+                    <p className="text-xs mt-1">ZIP, EXE, DMG, APK, DEB, RPM, etc. (max 500 MB — use External URL for larger files)</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Submit */}
         <div className="flex items-center gap-3 justify-end">
           <button type="button" onClick={() => navigate('/developer')} className="btn-secondary">Cancel</button>
           <button type="submit" disabled={submitting} className="btn-primary">

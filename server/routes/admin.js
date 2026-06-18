@@ -3,10 +3,9 @@ const router = express.Router();
 const { getDb } = require('../database');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
-// Middleware: admin only
 router.use(requireAuth, requireAdmin);
 
-// GET /admin/dashboard - Stats overview
+// GET /admin/dashboard
 router.get('/dashboard', (req, res) => {
   const db = getDb();
   const stats = {
@@ -21,8 +20,6 @@ router.get('/dashboard', (req, res) => {
   };
   res.json({ stats });
 });
-
-// ---- USER MANAGEMENT ----
 
 // GET /admin/users
 router.get('/users', (req, res) => {
@@ -61,10 +58,7 @@ router.patch('/users/:id/role', (req, res) => {
   const db = getDb();
   const result = db.prepare('UPDATE users SET role = ?, updated_at = datetime("now") WHERE id = ?').run(role, req.params.id);
 
-  if (result.changes === 0) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
+  if (result.changes === 0) return res.status(404).json({ error: 'User not found' });
   res.json({ message: `User role updated to ${role}` });
 });
 
@@ -73,16 +67,11 @@ router.patch('/users/:id/verify', (req, res) => {
   const db = getDb();
   const result = db.prepare('UPDATE users SET email_verified = 1, verification_token = NULL, updated_at = datetime("now") WHERE id = ?').run(req.params.id);
 
-  if (result.changes === 0) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
+  if (result.changes === 0) return res.status(404).json({ error: 'User not found' });
   res.json({ message: 'Email verified' });
 });
 
-// ---- APP MANAGEMENT ----
-
-// GET /admin/apps - All apps with filtering
+// GET /admin/apps
 router.get('/apps', (req, res) => {
   const { status, search, category, limit = 50, offset = 0 } = req.query;
   const db = getDb();
@@ -91,18 +80,9 @@ router.get('/apps', (req, res) => {
                FROM apps a JOIN users u ON a.developer_id = u.id WHERE 1=1`;
   const params = [];
 
-  if (status) {
-    query += ' AND a.status = ?';
-    params.push(status);
-  }
-  if (search) {
-    query += ' AND (a.name LIKE ? OR a.description LIKE ?)';
-    params.push(`%${search}%`, `%${search}%`);
-  }
-  if (category) {
-    query += ' AND a.category = ?';
-    params.push(category);
-  }
+  if (status) { query += ' AND a.status = ?'; params.push(status); }
+  if (search) { query += ' AND (a.name LIKE ? OR a.description LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+  if (category) { query += ' AND a.category = ?'; params.push(category); }
 
   const countQuery = query.replace(/SELECT.*?FROM/, 'SELECT COUNT(*) as total FROM');
   const { total } = db.prepare(countQuery).get(...params);
@@ -114,7 +94,7 @@ router.get('/apps', (req, res) => {
   res.json({ apps, total });
 });
 
-// GET /admin/apps/:id - Full app detail for review
+// GET /admin/apps/:id
 router.get('/apps/:id', (req, res) => {
   const db = getDb();
 
@@ -134,7 +114,7 @@ router.get('/apps/:id', (req, res) => {
   res.json({ app });
 });
 
-// PATCH /admin/apps/:id/review - Approve or reject app
+// PATCH /admin/apps/:id/review
 router.patch('/apps/:id/review', (req, res) => {
   const { status, review_notes } = req.body;
   if (!['approved', 'rejected', 'reviewing', 'suspended'].includes(status)) {
@@ -158,7 +138,22 @@ router.patch('/apps/:id/review', (req, res) => {
   res.json({ message: `App ${status}`, app: db.prepare('SELECT * FROM apps WHERE id = ?').get(req.params.id) });
 });
 
-// PATCH /admin/apps/:id/versions/:versionId/review - Approve/reject version
+// PATCH /admin/apps/:id/versions/:versionId/url - Update download URL (for external/large files)
+router.patch('/apps/:id/versions/:versionId/url', (req, res) => {
+  const { file_url, file_size } = req.body;
+  if (!file_url) return res.status(400).json({ error: 'file_url is required' });
+
+  const db = getDb();
+  const version = db.prepare('SELECT * FROM app_versions WHERE id = ? AND app_id = ?').get(req.params.versionId, req.params.id);
+  if (!version) return res.status(404).json({ error: 'Version not found' });
+
+  db.prepare('UPDATE app_versions SET file_url = ?, file_size = COALESCE(?, file_size) WHERE id = ?')
+    .run(file_url, file_size ? Number(file_size) : null, req.params.versionId);
+
+  res.json({ message: 'Download URL updated', version: db.prepare('SELECT * FROM app_versions WHERE id = ?').get(req.params.versionId) });
+});
+
+// PATCH /admin/apps/:id/versions/:versionId/review
 router.patch('/apps/:id/versions/:versionId/review', (req, res) => {
   const { status, review_notes } = req.body;
   if (!['approved', 'rejected'].includes(status)) {
@@ -170,26 +165,18 @@ router.patch('/apps/:id/versions/:versionId/review', (req, res) => {
     'UPDATE app_versions SET status = ? WHERE id = ? AND app_id = ?'
   ).run(status, req.params.versionId, req.params.id);
 
-  if (result.changes === 0) {
-    return res.status(404).json({ error: 'Version not found' });
-  }
-
+  if (result.changes === 0) return res.status(404).json({ error: 'Version not found' });
   res.json({ message: `Version ${status}` });
 });
 
-// DELETE /admin/apps/:id - Remove app
+// DELETE /admin/apps/:id
 router.delete('/apps/:id', (req, res) => {
   const db = getDb();
   const result = db.prepare("UPDATE apps SET status = 'removed', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
 
-  if (result.changes === 0) {
-    return res.status(404).json({ error: 'App not found' });
-  }
-
+  if (result.changes === 0) return res.status(404).json({ error: 'App not found' });
   res.json({ message: 'App removed' });
 });
-
-// ---- DEVELOPER APPLICATIONS ----
 
 // GET /admin/developer-applications
 router.get('/developer-applications', (req, res) => {
@@ -200,10 +187,7 @@ router.get('/developer-applications', (req, res) => {
                FROM developer_applications da JOIN users u ON da.user_id = u.id WHERE 1=1`;
   const params = [];
 
-  if (status) {
-    query += ' AND da.status = ?';
-    params.push(status);
-  }
+  if (status) { query += ' AND da.status = ?'; params.push(status); }
 
   query += ' ORDER BY da.created_at DESC';
   const applications = db.prepare(query).all(...params);
@@ -232,8 +216,6 @@ router.patch('/developer-applications/:id/review', (req, res) => {
   res.json({ message: `Developer application ${status}` });
 });
 
-// ---- REVIEW MANAGEMENT ----
-
 // GET /admin/reviews
 router.get('/reviews', (req, res) => {
   const { limit = 50, offset = 0 } = req.query;
@@ -257,7 +239,6 @@ router.delete('/reviews/:id', (req, res) => {
 
   db.prepare('DELETE FROM reviews WHERE id = ?').run(req.params.id);
 
-  // Recalculate app rating
   const stats = db.prepare('SELECT AVG(rating) as avg, COUNT(*) as count FROM reviews WHERE app_id = ?').get(review.app_id);
   db.prepare('UPDATE apps SET rating_avg = COALESCE(?, 0), rating_count = ? WHERE id = ?').run(
     stats.avg ? Math.round(stats.avg * 10) / 10 : 0, stats.count, review.app_id
