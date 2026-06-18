@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Package, Mail, Lock } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -31,9 +31,7 @@ export default function Login() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-primer-600 rounded-2xl flex items-center justify-center mx-auto">
-            <Package className="w-8 h-8 text-white" />
-          </div>
+          <img src="/primers-logo.svg" alt="Primers" className="h-16 mx-auto" />
           <h1 className="mt-4 text-2xl font-bold">Welcome back</h1>
           <p className="text-gray-500 mt-1">Sign in to your Primers Store account</p>
         </div>
