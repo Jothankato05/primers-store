@@ -90,6 +90,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Desktop app installer download — proxied so users never see the source URL
+const DESKTOP_INSTALLER_URL =
+  process.env.DESKTOP_INSTALLER_URL ||
+  'https://github.com/Jothankato05/primers-store/releases/latest/download/Primers-Store-Setup.exe';
+
+app.get('/api/download/desktop', (req, res) => {
+  res.setHeader('Content-Disposition', 'attachment; filename="Primers-Store-Setup.exe"');
+  res.redirect(302, DESKTOP_INSTALLER_URL);
+});
+
 // Serve React client in production (if built)
 const distPath = path.join(__dirname, '..', 'client', 'dist');
 if (process.env.NODE_ENV === 'production' && fs.existsSync(path.join(distPath, 'index.html'))) {
