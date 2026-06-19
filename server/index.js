@@ -84,6 +84,7 @@ app.use(authMiddleware);
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/apps', require('./routes/apps'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/ai', require('./routes/ai'));
 
 // Health check
 app.get('/api/health', (req, res) => {
