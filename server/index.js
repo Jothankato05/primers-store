@@ -64,7 +64,8 @@ setInterval(cleanupSessions, 60 * 60 * 1000); // hourly
 // Middleware
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    // Allow no-origin requests and Electron's "null" origin (custom protocol)
+    if (!origin || origin === 'null' || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     cb(new Error('CORS: origin not allowed'));
   },
   credentials: true,
