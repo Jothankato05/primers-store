@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
-const API = import.meta.env.VITE_API_URL || '/api';
+const API = window.__PRIMERS__?.apiUrl || import.meta.env.VITE_API_URL || '/api';
 
 async function apiRequest(path, options = {}) {
   const token = localStorage.getItem('primers_token');

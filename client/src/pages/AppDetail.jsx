@@ -21,7 +21,8 @@ export default function AppDetail() {
   const [installProgress, setInstallProgress] = useState(0);
 
   useEffect(() => {
-    fetch(`/api/apps/${slug}`)
+    const base = window.__PRIMERS__?.apiUrl || '/api';
+    fetch(`${base}/apps/${slug}`)
       .then(r => r.json())
       .then(data => setApp(data.app))
       .catch(() => toast.error('App not found'))
@@ -29,7 +30,7 @@ export default function AppDetail() {
   }, [slug]);
 
   const handleInstall = async () => {
-    if (!user) {
+    if (!user && !window.__PRIMERS__?.isElectron) {
       toast.error('Please sign in to install');
       return;
     }
@@ -37,49 +38,99 @@ export default function AppDetail() {
     setInstalling(true);
     setInstallProgress(0);
 
-    try {
-      // Simulate download progress
-      const progressInterval = setInterval(() => {
-        setInstallProgress(prev => Math.min(prev + Math.random() * 30, 90));
-      }, 300);
-
-      // Record installation
-      await apiRequest(`/apps/${slug}/install`, { method: 'POST' });
-
-      // Complete progress
-      clearInterval(progressInterval);
-      setInstallProgress(100);
-
-      // Download the file
-      if (app.latest_version?.file_url) {
-        const link = document.createElement('a');
-        link.href = app.latest_version.file_url;
-        link.download = `${app.name}-${app.latest_version.version}.exe`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-
-      toast.success('App installed!');
-      setTimeout(() => {
+    if (window.__PRIMERS__?.isElectron) {
+      // Native desktop install via Electron IPC
+      const removeProgress = window.__PRIMERS__.onProgress(({ slug: s, pct }) => {
+        if (s === slug) setInstallProgress(pct);
+      });
+      const removeInstalled = window.__PRIMERS__.onInstalled(({ slug: s }) => {
+        if (s !== slug) return;
+        removeProgress();
+        removeInstalled();
+        removeError();
+        setInstallProgress(100);
+        toast.success(`${app.name} installed!`);
+        setTimeout(() => {
+          setInstalling(false);
+          setInstallProgress(0);
+          setApp(prev => ({ ...prev, is_installed: true }));
+        }, 600);
+      });
+      const removeError = window.__PRIMERS__.onError(({ slug: s, error }) => {
+        if (s !== slug) return;
+        removeProgress();
+        removeInstalled();
+        removeError();
+        toast.error(error || 'Installation failed');
         setInstalling(false);
         setInstallProgress(0);
-        setApp({ ...app, is_installed: true });
-      }, 500);
-    } catch (e) {
-      toast.error(e.message || 'Installation failed');
-      setInstalling(false);
-      setInstallProgress(0);
+      });
+
+      const result = await window.__PRIMERS__.install({
+        slug,
+        name: app.name,
+        version: app.latest_version?.version || '1.0.0',
+        fileUrl: app.latest_version?.file_url || '',
+      });
+
+      if (result && !result.success) {
+        // Error already emitted via onError, but clean up if not triggered
+        removeProgress(); removeInstalled(); removeError();
+        setInstalling(false);
+        setInstallProgress(0);
+      }
+    } else {
+      // Web browser: simulate progress + trigger download
+      try {
+        const progressInterval = setInterval(() => {
+          setInstallProgress(prev => Math.min(prev + Math.random() * 30, 90));
+        }, 300);
+
+        await apiRequest(`/apps/${slug}/install`, { method: 'POST' });
+
+        clearInterval(progressInterval);
+        setInstallProgress(100);
+
+        if (app.latest_version?.file_url) {
+          const link = document.createElement('a');
+          link.href = app.latest_version.file_url;
+          link.download = `${app.name}-${app.latest_version.version}.exe`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+
+        toast.success('Download started!');
+        setTimeout(() => {
+          setInstalling(false);
+          setInstallProgress(0);
+          setApp(prev => ({ ...prev, is_installed: true }));
+        }, 500);
+      } catch (e) {
+        toast.error(e.message || 'Installation failed');
+        setInstalling(false);
+        setInstallProgress(0);
+      }
     }
   };
 
   const handleUninstall = async () => {
-    if (!user) return;
+    if (window.__PRIMERS__?.isElectron) {
+      const result = await window.__PRIMERS__.uninstall({ slug, name: app.name });
+      if (result.success) {
+        toast.success('App uninstalled');
+        setApp(prev => ({ ...prev, is_installed: false }));
+      } else {
+        toast.error(result.error || 'Uninstall failed');
+      }
+      return;
+    }
 
+    if (!user) return;
     try {
       await apiRequest(`/apps/${slug}/install`, { method: 'DELETE' });
       toast.success('App uninstalled');
-      setApp({ ...app, is_installed: false });
+      setApp(prev => ({ ...prev, is_installed: false }));
     } catch (e) {
       toast.error(e.message || 'Uninstall failed');
     }
@@ -98,7 +149,8 @@ export default function AppDetail() {
       setShowReviewForm(false);
       setReviewText(''); setReviewTitle(''); setReviewRating(5);
       // Refresh
-      const data = await fetch(`/api/apps/${slug}`).then(r => r.json());
+      const base = window.__PRIMERS__?.apiUrl || '/api';
+      const data = await fetch(`${base}/apps/${slug}`).then(r => r.json());
       setApp(data.app);
     } catch (e) { toast.error(e.message); }
     finally { setSubmitting(false); }

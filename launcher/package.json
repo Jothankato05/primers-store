@@ -1,0 +1,45 @@
+{
+  "name": "primers-store-desktop",
+  "version": "1.0.0",
+  "description": "Primers Store — desktop app",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:full": "cd ../client && npm run build && cd ../launcher && electron-builder"
+  },
+  "build": {
+    "appId": "store.primers.desktop",
+    "productName": "Primers Store",
+    "copyright": "Copyright © 2025 Primers Group",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*"],
+    "extraResources": [
+      {
+        "from": "../client/dist",
+        "to": "client/dist",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Primers Store",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    },
+    "protocols": [{ "name": "Primers Store", "schemes": ["primers-store"] }]
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  }
+}
