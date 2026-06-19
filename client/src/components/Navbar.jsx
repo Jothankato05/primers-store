@@ -1,7 +1,13 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Search, User, Package, Settings, LogOut, Menu, X, Shield, PlusCircle } from 'lucide-react';
+import { Search, User, Package, LogOut, Menu, X, Shield, Minus, Maximize2 } from 'lucide-react';
+
+const isElectron = !!window.__PRIMERS__?.isElectron;
+
+// In Electron (frameless window), interactive elements must opt out of the drag region
+const drag = isElectron ? { WebkitAppRegion: 'drag' } : undefined;
+const noDrag = isElectron ? { WebkitAppRegion: 'no-drag' } : undefined;
 
 export default function Navbar() {
   const { user, logout, isAdmin, isDeveloper } = useAuth();
@@ -22,16 +28,17 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50" style={drag}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
+
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0">
+          <Link to="/" className="flex items-center gap-2 shrink-0" style={noDrag}>
             <img src="/primers-logo.svg" alt="Primers" className="h-10" />
           </Link>
 
           {/* Search */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-lg mx-8">
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-lg mx-8" style={noDrag}>
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
@@ -45,7 +52,7 @@ export default function Navbar() {
           </form>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4" style={noDrag}>
             <Link
               to="/store"
               className={`text-sm font-medium transition-colors ${isActive('/store') ? 'text-primer-600' : 'text-gray-600 hover:text-gray-900'}`}
@@ -106,10 +113,37 @@ export default function Navbar() {
                 <Link to="/register" className="btn-primary btn-sm">Register</Link>
               </div>
             )}
+
+            {/* Electron window controls */}
+            {isElectron && (
+              <div className="flex items-center ml-2 pl-2 border-l border-gray-200">
+                <button
+                  onClick={() => window.__PRIMERS__.minimize()}
+                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                  title="Minimize"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => window.__PRIMERS__.maximize()}
+                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                  title="Maximize"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => window.__PRIMERS__.close()}
+                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-red-100 text-gray-400 hover:text-red-600 transition-colors"
+                  title="Close"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Mobile menu button */}
-          <button className="md:hidden p-2 rounded-lg hover:bg-gray-100" onClick={() => setMenuOpen(!menuOpen)}>
+          <button className="md:hidden p-2 rounded-lg hover:bg-gray-100" style={noDrag} onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -117,7 +151,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-2">
+        <div className="md:hidden border-t border-gray-200 bg-white px-4 py-3 space-y-2" style={noDrag}>
           <form onSubmit={handleSearch}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -130,12 +164,24 @@ export default function Navbar() {
               <Link to="/dashboard" className={`block py-2 text-sm font-medium ${isActive('/dashboard') ? 'text-primer-600' : 'text-gray-700'}`} onClick={() => setMenuOpen(false)}>Dashboard</Link>
               {isDeveloper && <Link to="/developer" className={`block py-2 text-sm font-medium ${isActive('/developer') ? 'text-primer-600' : 'text-gray-700'}`} onClick={() => setMenuOpen(false)}>Developer Console</Link>}
               {isAdmin && <Link to="/admin" className={`block py-2 text-sm font-medium ${isActive('/admin') ? 'text-primer-600' : 'text-gray-700'}`} onClick={() => setMenuOpen(false)}>Admin Panel</Link>}
+              {isElectron && (
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                  <button onClick={() => window.__PRIMERS__.minimize()} className="flex-1 py-2 text-sm text-center text-gray-600 hover:bg-gray-50 rounded">Minimize</button>
+                  <button onClick={() => window.__PRIMERS__.close()} className="flex-1 py-2 text-sm text-center text-red-600 hover:bg-red-50 rounded">Close</button>
+                </div>
+              )}
               <button onClick={() => { logout(); setMenuOpen(false); }} className="block py-2 text-sm font-medium text-red-600">Sign Out</button>
             </>
           ) : (
             <>
               <Link to="/login" className="block py-2 text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>Sign In</Link>
               <Link to="/register" className="block py-2 text-sm font-medium text-primer-600" onClick={() => setMenuOpen(false)}>Register</Link>
+              {isElectron && (
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                  <button onClick={() => window.__PRIMERS__.minimize()} className="flex-1 py-2 text-sm text-center text-gray-600 hover:bg-gray-50 rounded">Minimize</button>
+                  <button onClick={() => window.__PRIMERS__.close()} className="flex-1 py-2 text-sm text-center text-red-600 hover:bg-red-50 rounded">Close</button>
+                </div>
+              )}
             </>
           )}
         </div>

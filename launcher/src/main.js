@@ -6,45 +6,52 @@ const fs = require('fs');
 const { execFile, exec } = require('child_process');
 const os = require('os');
 
-const STORE_API = 'https://primers-store.onrender.com/api';
 const INSTALL_DIR = path.join(os.homedir(), 'AppData', 'Local', 'PrimersStore', 'installers');
 const DIST_DIR = path.join(__dirname, '..', '..', 'client', 'dist');
+
+// Must be called before app.whenReady()
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'primers', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
 
 let mainWindow = null;
 let tray = null;
 
-// Serve React build via custom protocol so React Router works
 function registerProtocol() {
   protocol.registerFileProtocol('primers', (request, callback) => {
-    let url = request.url.replace('primers://', '').split('?')[0].split('#')[0];
-    if (!url || url === '/') url = 'index.html';
-    url = url.replace(/^\//, '');
-    const filePath = path.join(DIST_DIR, url);
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      callback(filePath);
+    // With standard scheme, URL is parsed like HTTP:
+    //   primers://index.html/assets/foo.js → pathname = /assets/foo.js
+    const parsed = new URL(request.url);
+    let filePath = parsed.pathname;
+    if (!filePath || filePath === '/') filePath = '/index.html';
+
+    const fullPath = path.join(DIST_DIR, filePath.slice(1));
+    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+      callback(fullPath);
     } else {
-      // All unknown paths → index.html so React Router handles them
+      // SPA fallback — React Router handles the route
       callback(path.join(DIST_DIR, 'index.html'));
     }
   });
 }
 
 function createWindow() {
+  const iconPath = path.join(__dirname, '..', 'assets', 'icon.ico');
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
     minWidth: 960,
     minHeight: 600,
     frame: false,
-    titleBarStyle: 'hidden',
     backgroundColor: '#f9fafb',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: false, // allow local file loads
+      webSecurity: false,
     },
-    icon: path.join(__dirname, '..', 'assets', 'icon.ico'),
+    ...(fs.existsSync(iconPath) ? { icon: iconPath } : {}),
     show: false,
   });
 
@@ -52,7 +59,14 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
-  // Keep React Router working on reload
+  // Open external links (website, support) in the system browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http') || url.startsWith('https')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
   mainWindow.webContents.on('will-navigate', (e, url) => {
     if (!url.startsWith('primers://')) {
       e.preventDefault();
@@ -62,6 +76,7 @@ function createWindow() {
     }
   });
 
+  // Hide instead of close so tray keeps the app alive
   mainWindow.on('close', (e) => {
     e.preventDefault();
     mainWindow.hide();
@@ -83,7 +98,7 @@ function createTray() {
   tray.on('click', () => { mainWindow.show(); mainWindow.focus(); });
 }
 
-// Stream download a file with real progress events
+// Stream download with real progress events
 function downloadFile(url, destPath, onProgress) {
   return new Promise((resolve, reject) => {
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
@@ -94,7 +109,7 @@ function downloadFile(url, destPath, onProgress) {
       proto.get(targetUrl, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           file.close();
-          return get(res.headers.location); // follow redirect
+          return get(res.headers.location);
         }
         if (res.statusCode !== 200) {
           file.close();
@@ -102,20 +117,24 @@ function downloadFile(url, destPath, onProgress) {
         }
         const total = parseInt(res.headers['content-length'] || '0', 10);
         let received = 0;
-        res.on('data', chunk => {
+        res.on('data', (chunk) => {
           received += chunk.length;
           if (total > 0) onProgress(Math.round((received / total) * 100));
         });
         res.pipe(file);
         file.on('finish', () => { file.close(); resolve(destPath); });
-      }).on('error', (err) => { file.close(); fs.unlinkSync(destPath); reject(err); });
+      }).on('error', (err) => {
+        file.close();
+        if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+        reject(err);
+      });
     };
 
     get(url);
   });
 }
 
-// IPC: install app natively
+// IPC: native silent install
 ipcMain.handle('native:install', async (event, { slug, name, version, fileUrl }) => {
   const safe = slug.replace(/[^a-z0-9-]/g, '');
   const destPath = path.join(INSTALL_DIR, `${safe}-${version}.exe`);
@@ -127,7 +146,6 @@ ipcMain.handle('native:install', async (event, { slug, name, version, fileUrl })
 
     event.sender.send('native:progress', { slug, pct: 100, phase: 'installing' });
 
-    // Run installer silently
     await new Promise((resolve, reject) => {
       execFile(destPath, ['/S'], { timeout: 120000 }, (err) => {
         if (err) reject(err); else resolve();
@@ -144,7 +162,6 @@ ipcMain.handle('native:install', async (event, { slug, name, version, fileUrl })
 
 // IPC: uninstall via Windows registry
 ipcMain.handle('native:uninstall', async (event, { slug, name }) => {
-  // Search both HKLM and HKCU
   const keys = [
     `HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall`,
     `HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall`,
@@ -171,20 +188,19 @@ ipcMain.handle('native:uninstall', async (event, { slug, name }) => {
   return { success: false, error: 'App not found in Windows registry' };
 });
 
-// IPC: window controls
+// IPC: frameless window controls
 ipcMain.on('win:minimize', () => mainWindow?.minimize());
 ipcMain.on('win:maximize', () => mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize());
 ipcMain.on('win:close', () => mainWindow?.hide());
 
 app.whenReady().then(() => {
-  protocol.registerSchemesAsPrivileged
-    ? null
-    : null; // handled in app.on('ready')
   registerProtocol();
   createWindow();
   createTray();
 });
 
-app.on('before-quit', () => tray?.destroy());
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
 
-module.exports = {};
+app.on('before-quit', () => tray?.destroy());
