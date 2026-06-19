@@ -170,38 +170,38 @@ export default function AppDetail() {
   };
 
   if (loading) return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-[#0a0a0f] max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="animate-pulse space-y-6">
-        <div className="h-4 bg-gray-200 rounded w-48" />
+        <div className="h-4 bg-white/8 rounded w-48" />
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="flex gap-5">
-              <div className="w-20 h-20 bg-gray-200 rounded-2xl shrink-0" />
+              <div className="w-24 h-24 bg-white/8 rounded-2xl shrink-0" />
               <div className="flex-1 space-y-3">
-                <div className="h-7 bg-gray-200 rounded w-2/3" />
-                <div className="h-4 bg-gray-200 rounded w-1/3" />
-                <div className="h-4 bg-gray-200 rounded w-1/4" />
+                <div className="h-7 bg-white/8 rounded w-2/3" />
+                <div className="h-4 bg-white/5 rounded w-1/3" />
+                <div className="h-4 bg-white/5 rounded w-1/4" />
               </div>
             </div>
-            <div className="h-48 bg-gray-200 rounded-xl" />
+            <div className="h-48 bg-white/5 rounded-xl" />
             <div className="space-y-2">
-              <div className="h-4 bg-gray-200 rounded w-full" />
-              <div className="h-4 bg-gray-200 rounded w-full" />
-              <div className="h-4 bg-gray-200 rounded w-3/4" />
+              <div className="h-4 bg-white/5 rounded w-full" />
+              <div className="h-4 bg-white/5 rounded w-full" />
+              <div className="h-4 bg-white/5 rounded w-3/4" />
             </div>
           </div>
-          <div className="h-64 bg-gray-200 rounded-xl" />
+          <div className="h-64 bg-white/5 rounded-xl" />
         </div>
       </div>
     </div>
   );
   if (!app) return (
-    <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Download className="w-8 h-8 text-gray-400" />
+    <div className="min-h-screen bg-[#0a0a0f] max-w-7xl mx-auto px-4 py-20 text-center">
+      <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Download className="w-8 h-8 text-white/30" />
       </div>
-      <h2 className="text-2xl font-bold text-gray-900">App not found</h2>
-      <p className="text-gray-500 mt-2 mb-6">This app doesn't exist or may have been removed.</p>
+      <h2 className="text-2xl font-bold text-white">App not found</h2>
+      <p className="text-white/50 mt-2 mb-6">This app doesn't exist or may have been removed.</p>
       <Link to="/store" className="btn-primary">Back to Store</Link>
     </div>
   );
@@ -209,225 +209,227 @@ export default function AppDetail() {
   const PlatformIcon = platformIcons[app.latest_version?.platform] || Monitor;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link to="/store" className="hover:text-gray-700">Store</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-gray-900 font-medium">{app.name}</span>
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Main content */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Header */}
-          <div className="flex items-start gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primer-500 to-primer-700 flex items-center justify-center shrink-0 overflow-hidden">
-              {app.icon_url ? (
-                <img src={app.icon_url} alt={app.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-white font-bold text-3xl">{app.name.charAt(0)}</span>
-              )}
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">{app.name}</h1>
-              <p className="text-gray-500 mt-1">by {app.developer_display || app.developer_name}</p>
-              <div className="flex items-center gap-3 mt-2">
-                <StarRating rating={app.rating_avg} count={app.rating_count} size="md" />
-                <span className="text-sm text-gray-400">|</span>
-                <span className="text-sm text-gray-500">{app.downloads_count.toLocaleString()} downloads</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Banner */}
-          {app.banner_url && (
-            <img src={app.banner_url} alt={app.name} className="w-full rounded-xl object-cover max-h-64" />
-          )}
-
-          {/* Screenshots */}
-          {app.screenshots?.length > 0 && (
-            <div>
-              <h3 className="font-semibold text-lg mb-3">Screenshots</h3>
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {app.screenshots.map((shot, i) => (
-                  <img key={i} src={shot.url} alt={shot.caption || `Screenshot ${i + 1}`} className="h-48 rounded-lg border border-gray-200 object-cover shrink-0" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Description */}
-          <div>
-            <h3 className="font-semibold text-lg mb-3">About this app</h3>
-            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{app.description}</p>
-          </div>
-
-          {/* Version info */}
-          {app.latest_version && (
-            <div>
-              <h3 className="font-semibold text-lg mb-3">Version {app.latest_version.version}</h3>
-              {app.latest_version.changelog && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-1">What's new:</h4>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{app.latest_version.changelog}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Reviews */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">Reviews</h3>
-              {user && !showReviewForm && (
-                <button onClick={() => setShowReviewForm(true)} className="btn-primary btn-sm flex items-center gap-1">
-                  <Star className="w-4 h-4" /> Write a Review
-                </button>
-              )}
-            </div>
-
-            {showReviewForm && (
-              <form onSubmit={submitReview} className="card p-4 mb-4">
-                <h4 className="font-semibold mb-3">Your Review</h4>
-                <div className="mb-3">
-                  <label className="block text-sm font-medium mb-1">Rating</label>
-                  <StarRating rating={reviewRating} interactive onChange={setReviewRating} size="md" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Review title (optional)"
-                  value={reviewTitle}
-                  onChange={e => setReviewTitle(e.target.value)}
-                  className="input-field mb-3"
-                />
-                <textarea
-                  placeholder="Share your experience..."
-                  value={reviewText}
-                  onChange={e => setReviewText(e.target.value)}
-                  rows={4}
-                  className="input-field mb-3"
-                  required
-                />
-                <div className="flex gap-2">
-                  <button type="submit" disabled={submitting} className="btn-primary btn-sm">
-                    {submitting ? 'Submitting...' : 'Submit Review'}
-                  </button>
-                  <button type="button" onClick={() => setShowReviewForm(false)} className="btn-secondary btn-sm">Cancel</button>
-                </div>
-              </form>
-            )}
-
-            {app.reviews?.length > 0 ? (
-              <div className="space-y-3">
-                {app.reviews.map(review => (
-                  <div key={review.id} className="card p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                          <User className="w-4 h-4 text-gray-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{review.username}</p>
-                          <StarRating rating={review.rating} size="sm" />
-                        </div>
-                      </div>
-                      <span className="text-xs text-gray-400">{new Date(review.created_at).toLocaleDateString()}</span>
-                    </div>
-                    {review.title && <h4 className="font-medium text-sm mt-2">{review.title}</h4>}
-                    {review.body && <p className="text-sm text-gray-600 mt-1">{review.body}</p>}
-                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
-                      <span>Helpful ({review.helpful_count || 0})</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-sm">No reviews yet. Be the first!</p>
-            )}
-          </div>
+    <div className="min-h-screen bg-[#0a0a0f]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-white/40 mb-6">
+          <Link to="/store" className="hover:text-white/70 transition-colors">Store</Link>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-white/70 font-medium">{app.name}</span>
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
-          <div className="card p-5 sticky top-24">
-            {app.price > 0 ? (
-              <div className="text-2xl font-bold text-gray-900 mb-3">${app.price.toFixed(2)}</div>
-            ) : (
-              <div className="text-lg font-semibold text-green-600 mb-3">Free</div>
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Header */}
+            <div className="flex items-start gap-5">
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primer-500 to-primer-700 flex items-center justify-center shrink-0 overflow-hidden shadow-2xl shadow-primer-500/30 ring-2 ring-primer-500/20">
+                {app.icon_url ? (
+                  <img src={app.icon_url} alt={app.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white font-bold text-3xl">{app.name.charAt(0)}</span>
+                )}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white">{app.name}</h1>
+                <p className="text-white/50 mt-1">by {app.developer_display || app.developer_name}</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <StarRating rating={app.rating_avg} count={app.rating_count} size="md" />
+                  <span className="text-sm text-white/30">|</span>
+                  <span className="text-sm text-white/50">{app.downloads_count.toLocaleString()} downloads</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Banner */}
+            {app.banner_url && (
+              <img src={app.banner_url} alt={app.name} className="w-full rounded-xl object-cover max-h-64 border border-white/10" />
             )}
 
-            {app.is_installed ? (
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center justify-between">
-                  <span className="inline-block px-3 py-1 bg-green-50 text-green-700 text-sm font-medium rounded-full">✓ Installed</span>
+            {/* Screenshots */}
+            {app.screenshots?.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3 text-white">Screenshots</h3>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {app.screenshots.map((shot, i) => (
+                    <img key={i} src={shot.url} alt={shot.caption || `Screenshot ${i + 1}`} className="h-48 rounded-lg border border-white/10 object-cover shrink-0 hover:border-primer-500/40 transition-colors" />
+                  ))}
                 </div>
-                <button onClick={handleUninstall} className="btn-secondary w-full flex items-center justify-center gap-2">
-                  Uninstall
-                </button>
               </div>
-            ) : (
-              <div className="mb-4">
-                <button
-                  onClick={handleInstall}
-                  disabled={installing}
-                  className="btn-primary w-full flex items-center justify-center gap-2 mb-2"
-                >
-                  <Download className="w-5 h-5" /> {installing ? 'Installing...' : 'Install'}
-                </button>
-                {installing && (
-                  <div className="space-y-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-primer-500 to-primer-600 h-full transition-all duration-300"
-                        style={{ width: `${installProgress}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 text-center">{Math.round(installProgress)}% Complete</p>
+            )}
+
+            {/* Description */}
+            <div>
+              <h3 className="font-semibold text-lg mb-3 text-white">About this app</h3>
+              <p className="text-white/60 whitespace-pre-wrap leading-relaxed">{app.description}</p>
+            </div>
+
+            {/* Version info */}
+            {app.latest_version && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3 text-white">Version {app.latest_version.version}</h3>
+                {app.latest_version.changelog && (
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-white/80 mb-1">What's new:</h4>
+                    <p className="text-sm text-white/50 whitespace-pre-wrap">{app.latest_version.changelog}</p>
                   </div>
                 )}
               </div>
             )}
 
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2 text-gray-600">
-                <PlatformIcon className="w-4 h-4" />
-                <span>{app.latest_version?.platform || 'Windows'}</span>
+            {/* Reviews */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-lg text-white">Reviews</h3>
+                {user && !showReviewForm && (
+                  <button onClick={() => setShowReviewForm(true)} className="btn-primary btn-sm flex items-center gap-1">
+                    <Star className="w-4 h-4" /> Write a Review
+                  </button>
+                )}
               </div>
-              {app.latest_version && (
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Calendar className="w-4 h-4" />
-                  <span>Version {app.latest_version.version}</span>
+
+              {showReviewForm && (
+                <form onSubmit={submitReview} className="bg-[#13131a] border border-white/10 rounded-xl p-5 mb-4">
+                  <h4 className="font-semibold mb-3 text-white">Your Review</h4>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium mb-1 text-white/70">Rating</label>
+                    <StarRating rating={reviewRating} interactive onChange={setReviewRating} size="md" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Review title (optional)"
+                    value={reviewTitle}
+                    onChange={e => setReviewTitle(e.target.value)}
+                    className="input-field mb-3"
+                  />
+                  <textarea
+                    placeholder="Share your experience..."
+                    value={reviewText}
+                    onChange={e => setReviewText(e.target.value)}
+                    rows={4}
+                    className="input-field mb-3"
+                    required
+                  />
+                  <div className="flex gap-2">
+                    <button type="submit" disabled={submitting} className="btn-primary btn-sm">
+                      {submitting ? 'Submitting...' : 'Submit Review'}
+                    </button>
+                    <button type="button" onClick={() => setShowReviewForm(false)} className="btn-secondary btn-sm">Cancel</button>
+                  </div>
+                </form>
+              )}
+
+              {app.reviews?.length > 0 ? (
+                <div className="space-y-3">
+                  {app.reviews.map(review => (
+                    <div key={review.id} className="bg-[#13131a] border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-primer-600/20 border border-primer-500/20 rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-primer-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-white">{review.username}</p>
+                            <StarRating rating={review.rating} size="sm" />
+                          </div>
+                        </div>
+                        <span className="text-xs text-white/30">{new Date(review.created_at).toLocaleDateString()}</span>
+                      </div>
+                      {review.title && <h4 className="font-medium text-sm mt-2 text-white">{review.title}</h4>}
+                      {review.body && <p className="text-sm text-white/50 mt-1">{review.body}</p>}
+                      <div className="flex items-center gap-3 mt-2 text-xs text-white/30">
+                        <span>Helpful ({review.helpful_count || 0})</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-white/40 text-sm">No reviews yet. Be the first!</p>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-4">
+            <div className="bg-[#13131a] border border-white/10 rounded-xl p-5 sticky top-24">
+              {app.price > 0 ? (
+                <div className="text-2xl font-bold text-white mb-3">${app.price.toFixed(2)}</div>
+              ) : (
+                <div className="text-lg font-semibold text-emerald-400 mb-3">Free</div>
+              )}
+
+              {app.is_installed ? (
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-block px-3 py-1 bg-emerald-500/15 text-emerald-400 text-sm font-medium rounded-full border border-emerald-500/25">Installed</span>
+                  </div>
+                  <button onClick={handleUninstall} className="btn-secondary w-full flex items-center justify-center gap-2">
+                    Uninstall
+                  </button>
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <button
+                    onClick={handleInstall}
+                    disabled={installing}
+                    className="w-full flex items-center justify-center gap-2 mb-3 px-6 py-3 rounded-xl font-semibold bg-primer-600 text-white hover:bg-primer-500 transition-all shadow-glow hover:shadow-glow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <Download className="w-5 h-5" /> {installing ? 'Installing...' : 'Install'}
+                  </button>
+                  {installing && (
+                    <div className="space-y-2">
+                      <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-primer-500 to-primer-400 h-full transition-all duration-300"
+                          style={{ width: `${installProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-white/40 text-center">{Math.round(installProgress)}% Complete</p>
+                    </div>
+                  )}
                 </div>
               )}
-              <div className="flex items-center gap-2 text-gray-600">
-                <Shield className="w-4 h-4" />
-                <span>Verified & Safe</span>
+
+              <div className="space-y-3 text-sm border-t border-white/10 pt-4">
+                <div className="flex items-center gap-2 text-white/60">
+                  <PlatformIcon className="w-4 h-4 text-white/40" />
+                  <span>{app.latest_version?.platform || 'Windows'}</span>
+                </div>
+                {app.latest_version && (
+                  <div className="flex items-center gap-2 text-white/60">
+                    <Calendar className="w-4 h-4 text-white/40" />
+                    <span>Version {app.latest_version.version}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <Shield className="w-4 h-4" />
+                  <span>Verified & Safe</span>
+                </div>
+                <div className="flex items-center gap-2 text-white/60">
+                  <User className="w-4 h-4 text-white/40" />
+                  <span>{app.developer_display || app.developer_name}</span>
+                </div>
+                <hr className="border-white/10" />
+                <p className="text-xs text-white/35">Category: {app.category}</p>
+                <p className="text-xs text-white/35">Published: {app.published_at ? new Date(app.published_at).toLocaleDateString() : 'Pending'}</p>
+                {app.latest_version?.file_size && (
+                  <p className="text-xs text-white/35">
+                    Size: {app.latest_version.file_size >= 1024 * 1024 * 1024
+                      ? `${(app.latest_version.file_size / 1024 / 1024 / 1024).toFixed(2)} GB`
+                      : `${(app.latest_version.file_size / 1024 / 1024).toFixed(1)} MB`}
+                  </p>
+                )}
+                {app.website && (
+                  <a href={app.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primer-400 hover:text-primer-300 transition-colors">
+                    <Globe className="w-4 h-4" /> Website
+                  </a>
+                )}
+                {app.support_email && (
+                  <a href={`mailto:${app.support_email}`} className="flex items-center gap-2 text-primer-400 hover:text-primer-300 transition-colors">
+                    <Mail className="w-4 h-4" /> Support
+                  </a>
+                )}
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <User className="w-4 h-4" />
-                <span>{app.developer_display || app.developer_name}</span>
-              </div>
-              <hr className="border-gray-100" />
-              <p className="text-xs text-gray-400">Category: {app.category}</p>
-              <p className="text-xs text-gray-400">Published: {app.published_at ? new Date(app.published_at).toLocaleDateString() : 'Pending'}</p>
-              {app.latest_version?.file_size && (
-                <p className="text-xs text-gray-400">
-                  Size: {app.latest_version.file_size >= 1024 * 1024 * 1024
-                    ? `${(app.latest_version.file_size / 1024 / 1024 / 1024).toFixed(2)} GB`
-                    : `${(app.latest_version.file_size / 1024 / 1024).toFixed(1)} MB`}
-                </p>
-              )}
-              {app.website && (
-                <a href={app.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primer-600 hover:text-primer-700">
-                  <Globe className="w-4 h-4" /> Website
-                </a>
-              )}
-              {app.support_email && (
-                <a href={`mailto:${app.support_email}`} className="flex items-center gap-2 text-primer-600 hover:text-primer-700">
-                  <Mail className="w-4 h-4" /> Support
-                </a>
-              )}
             </div>
           </div>
         </div>

@@ -3,35 +3,43 @@
 @tailwind utilities;
 
 @layer base {
-  * { @apply border-gray-200; }
-  body { @apply bg-gray-50 text-gray-900; }
+  * { @apply border-white/10; }
+  html {
+    scroll-behavior: smooth;
+    background-color: #0a0a0f;
+  }
+  body {
+    @apply bg-[#0a0a0f] text-white;
+    background-color: #0a0a0f;
+  }
 }
 
 @layer components {
   .btn-primary {
     @apply bg-primer-600 text-white px-6 py-2.5 rounded-lg font-medium
-           hover:bg-primer-700 active:bg-primer-800 transition-colors
-           disabled:opacity-50 disabled:cursor-not-allowed;
+           hover:bg-primer-500 active:bg-primer-700 transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed
+           shadow-glow hover:shadow-glow-lg;
   }
   .btn-secondary {
-    @apply bg-white text-gray-700 px-6 py-2.5 rounded-lg font-medium border border-gray-300
-           hover:bg-gray-50 active:bg-gray-100 transition-colors
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-white/10 text-white px-6 py-2.5 rounded-lg font-medium border border-white/20
+           hover:bg-white/15 active:bg-white/20 transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm;
   }
   .btn-danger {
     @apply bg-red-600 text-white px-6 py-2.5 rounded-lg font-medium
-           hover:bg-red-700 active:bg-red-800 transition-colors;
+           hover:bg-red-500 active:bg-red-700 transition-colors;
   }
   .btn-sm {
     @apply px-3 py-1.5 text-sm;
   }
   .input-field {
-    @apply w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-white
+    @apply w-full px-4 py-2.5 rounded-lg border border-white/20 bg-white/10
            focus:outline-none focus:ring-2 focus:ring-primer-500 focus:border-transparent
-           placeholder:text-gray-400 transition-shadow;
+           placeholder:text-white/40 transition-shadow text-white backdrop-blur-sm;
   }
   .card {
-    @apply bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-[#13131a] rounded-xl border border-white/10 shadow-md hover:shadow-lg transition-all duration-300;
   }
 }
 
@@ -40,4 +48,59 @@
   .translate-z-5 { transform: translateZ(5px); }
   .translate-z-10 { transform: translateZ(10px); }
   .translate-z-20 { transform: translateZ(20px); }
+
+  .glass {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .glass-card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+  }
+
+  .glow-text {
+    background: linear-gradient(135deg, #748ffc, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .dot-grid {
+    background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .gradient-border {
+    position: relative;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(92,124,250,0.4), rgba(168,85,247,0.4));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .gradient-border:hover::before {
+    opacity: 1;
+  }
+}
+
+/* Select dropdown dark styles */
+select option {
+  background-color: #1a1a2e;
+  color: white;
 }
