@@ -44,9 +44,29 @@ const upload = multer({
   }
 });
 
-// Slugify
+// Slugify — normalize Unicode, strip diacritics, fall back to timestamp for all-non-ASCII names
 function slugify(text) {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const slug = text.toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || `app-${Date.now()}`;
+}
+
+// Validate that a URL uses http or https (blocks file://, javascript:, etc.)
+function isValidHttpUrl(str) {
+  try {
+    const u = new URL(str);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch { return false; }
+}
+
+// Delete a local upload file if it's under /uploads/
+function deleteUploadFile(urlPath) {
+  if (!urlPath || !urlPath.startsWith('/uploads/')) return;
+  const filePath = path.join(UPLOADS_DIR, urlPath.replace('/uploads/', ''));
+  try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
 }
 
 // Stream-based SHA256 — avoids loading large files into memory
@@ -184,7 +204,7 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
     INSERT INTO apps (developer_id, name, slug, description, short_description, category, icon_url, banner_url, website, support_email, privacy_url)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    req.user.id, name, finalSlug, description, short_description || description.substring(0, 200),
+    req.user.id, name, finalSlug, description, short_description || (description || '').substring(0, 200),
     category, icon_url, banner_url, website || null, support_email || null, privacy_url || null
   );
 
@@ -201,6 +221,9 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
 
   const { external_file_url, external_file_size } = req.body;
   if (version && (req.files?.app_file?.[0] || external_file_url)) {
+    if (external_file_url && !isValidHttpUrl(external_file_url)) {
+      return res.status(400).json({ error: 'external_file_url must be a valid http or https URL' });
+    }
     let fileUrl, fileSize, fileHash = null;
     if (req.files?.app_file?.[0]) {
       const file = req.files.app_file[0];
@@ -250,9 +273,11 @@ router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
   if (privacy_url !== undefined) { updates.push('privacy_url = ?'); params.push(privacy_url); }
 
   if (req.files?.icon?.[0]) {
+    deleteUploadFile(app.icon_url);
     updates.push('icon_url = ?'); params.push(`/uploads/icons/${req.files.icon[0].filename}`);
   }
   if (req.files?.banner?.[0]) {
+    deleteUploadFile(app.banner_url);
     updates.push('banner_url = ?'); params.push(`/uploads/banners/${req.files.banner[0].filename}`);
   }
 
@@ -297,6 +322,10 @@ router.post('/:id/versions', requireAuth, requireDeveloper, upload.fields([
     return res.status(400).json({ error: 'Version and either an app file or external URL are required' });
   }
 
+  if (external_file_url && !isValidHttpUrl(external_file_url)) {
+    return res.status(400).json({ error: 'external_file_url must be a valid http or https URL' });
+  }
+
   let fileUrl, fileSize, fileHash = null;
   if (req.files?.app_file?.[0]) {
     const file = req.files.app_file[0];
@@ -325,6 +354,22 @@ router.get('/developer/mine', requireAuth, requireDeveloper, (req, res) => {
     'SELECT * FROM apps WHERE developer_id = ? ORDER BY updated_at DESC'
   ).all(req.user.id);
   res.json({ apps });
+});
+
+// GET /apps/:id/manage - Full app detail for the developer that owns it
+router.get('/:id/manage', requireAuth, requireDeveloper, (req, res) => {
+  const db = getDb();
+  const app = db.prepare(`
+    SELECT a.*, u.username as developer_name, u.email as developer_email, u.display_name as developer_display
+    FROM apps a JOIN users u ON a.developer_id = u.id WHERE a.id = ? AND a.developer_id = ?
+  `).get(req.params.id, req.user.id);
+
+  if (!app) return res.status(404).json({ error: 'App not found or access denied' });
+
+  app.screenshots = db.prepare('SELECT * FROM app_screenshots WHERE app_id = ? ORDER BY sort_order').all(app.id);
+  app.versions = db.prepare('SELECT * FROM app_versions WHERE app_id = ? ORDER BY created_at DESC').all(app.id);
+
+  res.json({ app });
 });
 
 // POST /apps/:slug/reviews - Submit review

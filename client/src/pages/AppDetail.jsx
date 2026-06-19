@@ -88,13 +88,20 @@ export default function AppDetail() {
 
         await apiRequest(`/apps/${slug}/install`, { method: 'POST' });
 
+        // Track the download
+        const base = window.__PRIMERS__?.apiUrl || '/api';
+        fetch(`${base}/apps/${app.id}/download`, { method: 'POST' }).catch(() => {});
+
         clearInterval(progressInterval);
         setInstallProgress(100);
 
         if (app.latest_version?.file_url) {
+          const fileUrl = app.latest_version.file_url;
+          const rawExt = fileUrl.split('.').pop().split('?')[0].toLowerCase();
+          const safeExt = ['exe', 'dmg', 'deb', 'rpm', 'apk', 'zip', 'tar', 'gz', 'msi'].includes(rawExt) ? rawExt : 'exe';
           const link = document.createElement('a');
-          link.href = app.latest_version.file_url;
-          link.download = `${app.name}-${app.latest_version.version}.exe`;
+          link.href = fileUrl;
+          link.download = `${app.name}-${app.latest_version.version}.${safeExt}`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);

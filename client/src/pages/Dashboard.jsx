@@ -12,11 +12,13 @@ export default function Dashboard() {
   const [devReason, setDevReason] = useState('');
   const [devCompany, setDevCompany] = useState('');
   const [saving, setSaving] = useState(false);
+  const [applying, setApplying] = useState(false);
 
   useEffect(() => {
     if (isDeveloper) {
       const token = localStorage.getItem('primers_token');
-      fetch('/api/apps/developer/mine', { headers: { 'Authorization': `Bearer ${token}` } })
+      const base = window.__PRIMERS__?.apiUrl || '/api';
+      fetch(`${base}/apps/developer/mine`, { headers: { 'Authorization': `Bearer ${token}` } })
         .then(r => r.json())
         .then(d => setMyApps(d.apps || []))
         .catch(() => {});
@@ -41,11 +43,13 @@ export default function Dashboard() {
   const applyDeveloper = async (e) => {
     e.preventDefault();
     if (devReason.length < 20) return toast.error('Please write at least 20 characters');
+    setApplying(true);
     try {
       await apiRequest('/auth/apply-developer', { method: 'POST', body: JSON.stringify({ company_name: devCompany, reason: devReason }) });
       toast.success('Developer application submitted!');
       setShowDevApply(false);
     } catch (e) { toast.error(e.message); }
+    finally { setApplying(false); }
   };
 
   return (
@@ -145,7 +149,7 @@ export default function Dashboard() {
                 required
               />
               <div className="flex gap-2">
-                <button type="submit" className="btn-primary btn-sm flex-1">Submit</button>
+                <button type="submit" disabled={applying} className="btn-primary btn-sm flex-1">{applying ? 'Submitting...' : 'Submit'}</button>
                 <button type="button" onClick={() => setShowDevApply(false)} className="btn-secondary btn-sm">Cancel</button>
               </div>
             </form>

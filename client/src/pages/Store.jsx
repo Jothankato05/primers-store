@@ -16,15 +16,17 @@ export default function Store() {
   const limit = 12;
 
   useEffect(() => {
-    fetch('/api/apps/categories').then(r => r.json()).then(d => setCategories(d.categories || []));
+    const base = window.__PRIMERS__?.apiUrl || '/api';
+    fetch(`${base}/apps/categories`).then(r => r.json()).then(d => setCategories(d.categories || []));
   }, []);
 
   useEffect(() => {
     setLoading(true);
+    const base = window.__PRIMERS__?.apiUrl || '/api';
     const params = new URLSearchParams({ limit, offset: (page - 1) * limit, sort });
     if (search) params.set('search', search);
     if (category) params.set('category', category);
-    fetch(`/api/apps?${params}`)
+    fetch(`${base}/apps?${params}`)
       .then(r => r.json())
       .then(data => { setApps(data.apps || []); setTotal(data.total || 0); })
       .finally(() => setLoading(false));
