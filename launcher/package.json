@@ -2,11 +2,15 @@
   "name": "primers-store-desktop",
   "version": "1.0.0",
   "description": "Primers Store — desktop app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jothankato05/primers-store.git"
+  },
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
-    "build:full": "cd ../client && npm run build && cd ../launcher && electron-builder"
+    "build": "electron-builder --publish never",
+    "build:full": "cd ../client && npm run build && cd ../launcher && electron-builder --publish never"
   },
   "build": {
     "appId": "store.primers.desktop",
