@@ -16,10 +16,11 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('pending');
 
   const token = localStorage.getItem('primers_token');
+  const base = window.__PRIMERS__?.apiUrl || '/api';
   const headers = { 'Authorization': `Bearer ${token}` };
 
   useEffect(() => {
-    fetch('/api/admin/dashboard', { headers }).then(r => r.json()).then(d => setStats(d.stats)).catch(() => {});
+    fetch(`${base}/admin/dashboard`, { headers }).then(r => r.json()).then(d => setStats(d.stats)).catch(() => {});
     loadApps();
     loadUsers();
     loadDevApplications();
@@ -29,24 +30,25 @@ export default function AdminDashboard() {
     setLoading(true);
     const params = new URLSearchParams({ status, limit: 50 });
     if (search) params.set('search', search);
-    fetch(`/api/admin/apps?${params}`, { headers })
+    fetch(`${base}/admin/apps?${params}`, { headers })
       .then(r => r.json()).then(d => setApps(d.apps || []))
+      .catch(() => {})
       .finally(() => setLoading(false));
   };
 
   const loadUsers = (search = '') => {
     const params = new URLSearchParams({ limit: 50 });
     if (search) params.set('search', search);
-    fetch(`/api/admin/users?${params}`, { headers }).then(r => r.json()).then(d => setUsers(d.users || []));
+    fetch(`${base}/admin/users?${params}`, { headers }).then(r => r.json()).then(d => setUsers(d.users || [])).catch(() => {});
   };
 
   const loadDevApplications = () => {
-    fetch('/api/admin/developer-applications?status=pending', { headers })
-      .then(r => r.json()).then(d => setDevApps(d.applications || []));
+    fetch(`${base}/admin/developer-applications?status=pending`, { headers })
+      .then(r => r.json()).then(d => setDevApps(d.applications || [])).catch(() => {});
   };
 
   const loadReviews = () => {
-    fetch('/api/admin/reviews?limit=50', { headers }).then(r => r.json()).then(d => setReviews(d.reviews || []));
+    fetch(`${base}/admin/reviews?limit=50`, { headers }).then(r => r.json()).then(d => setReviews(d.reviews || [])).catch(() => {});
   };
 
   const reviewApp = async (appId, status, notes = '') => {
@@ -102,11 +104,16 @@ export default function AdminDashboard() {
   const [editingVersionUrl, setEditingVersionUrl] = useState({});
 
   const loadAppDetail = async (appId) => {
-    const data = await fetch(`/api/admin/apps/${appId}`, { headers }).then(r => r.json());
-    setAppDetail(data.app);
-    const initial = {};
-    (data.app.versions || []).forEach(v => { initial[v.id] = { url: v.file_url || '', size: v.file_size || '' }; });
-    setEditingVersionUrl(initial);
+    try {
+      const res = await fetch(`${base}/admin/apps/${appId}`, { headers });
+      if (!res.ok) throw new Error('Failed to load');
+      const data = await res.json();
+      if (!data.app) throw new Error('No app data');
+      setAppDetail(data.app);
+      const initial = {};
+      (data.app.versions || []).forEach(v => { initial[v.id] = { url: v.file_url || '', size: v.file_size || '' }; });
+      setEditingVersionUrl(initial);
+    } catch { toast.error('Failed to load app details'); }
   };
 
   const tabs = [

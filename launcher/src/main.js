@@ -19,17 +19,18 @@ let tray = null;
 
 function registerProtocol() {
   protocol.registerFileProtocol('primers', (request, callback) => {
-    // With standard scheme, URL is parsed like HTTP:
-    //   primers://index.html/assets/foo.js → pathname = /assets/foo.js
     const parsed = new URL(request.url);
     let filePath = parsed.pathname;
     if (!filePath || filePath === '/') filePath = '/index.html';
 
-    const fullPath = path.join(DIST_DIR, filePath.slice(1));
+    const fullPath = path.normalize(path.join(DIST_DIR, filePath.slice(1)));
+    // Prevent path traversal outside the dist directory
+    if (!fullPath.startsWith(DIST_DIR + path.sep) && fullPath !== DIST_DIR) {
+      return callback(path.join(DIST_DIR, 'index.html'));
+    }
     if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
       callback(fullPath);
     } else {
-      // SPA fallback — React Router handles the route
       callback(path.join(DIST_DIR, 'index.html'));
     }
   });
@@ -162,6 +163,8 @@ ipcMain.handle('native:install', async (event, { slug, name, version, fileUrl })
 
 // IPC: uninstall via Windows registry
 ipcMain.handle('native:uninstall', async (event, { slug, name }) => {
+  // Sanitize name to prevent shell injection in reg query
+  const safeName = String(name).replace(/[^\w\s.\-]/g, '').substring(0, 100);
   const keys = [
     `HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall`,
     `HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall`,
@@ -171,13 +174,17 @@ ipcMain.handle('native:uninstall', async (event, { slug, name }) => {
   for (const key of keys) {
     try {
       const stdout = await new Promise((res, rej) =>
-        exec(`reg query "${key}" /s /f "${name}" /t REG_SZ`, (e, o) => e ? rej(e) : res(o))
+        exec(`reg query "${key}" /s /f "${safeName}" /t REG_SZ`, (e, o) => e ? rej(e) : res(o))
       );
       const match = stdout.match(/UninstallString\s+REG_SZ\s+(.+)/i);
       if (match) {
-        const cmd = match[1].trim().replace(/"/g, '');
+        const uninstallStr = match[1].trim();
+        // Parse the uninstall path safely — may be quoted: "C:\path\uninstall.exe" [args]
+        const exeMatch = uninstallStr.match(/^"([^"]+)"|^([^\s]+)/);
+        const exePath = exeMatch ? (exeMatch[1] || exeMatch[2]) : null;
+        if (!exePath) continue;
         await new Promise((res, rej) =>
-          exec(`"${cmd}" /S`, (e) => e ? rej(e) : res())
+          execFile(exePath, ['/S'], { timeout: 60000 }, (e) => e ? rej(e) : res())
         );
         event.sender.send('native:uninstalled', { slug });
         return { success: true };

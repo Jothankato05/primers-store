@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import StarRating from '../components/StarRating';
@@ -19,6 +19,9 @@ export default function AppDetail() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [installProgress, setInstallProgress] = useState(0);
+  const progressIntervalRef = useRef(null);
+
+  useEffect(() => () => { if (progressIntervalRef.current) clearInterval(progressIntervalRef.current); }, []);
 
   useEffect(() => {
     const base = window.__PRIMERS__?.apiUrl || '/api';
@@ -82,7 +85,7 @@ export default function AppDetail() {
     } else {
       // Web browser: simulate progress + trigger download
       try {
-        const progressInterval = setInterval(() => {
+        progressIntervalRef.current = setInterval(() => {
           setInstallProgress(prev => Math.min(prev + Math.random() * 30, 90));
         }, 300);
 
@@ -92,7 +95,8 @@ export default function AppDetail() {
         const base = window.__PRIMERS__?.apiUrl || '/api';
         fetch(`${base}/apps/${app.id}/download`, { method: 'POST' }).catch(() => {});
 
-        clearInterval(progressInterval);
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
         setInstallProgress(100);
 
         if (app.latest_version?.file_url) {
@@ -114,6 +118,8 @@ export default function AppDetail() {
           setApp(prev => ({ ...prev, is_installed: true }));
         }, 500);
       } catch (e) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
         toast.error(e.message || 'Installation failed');
         setInstalling(false);
         setInstallProgress(0);

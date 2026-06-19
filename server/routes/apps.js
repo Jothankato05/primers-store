@@ -62,10 +62,11 @@ function isValidHttpUrl(str) {
   } catch { return false; }
 }
 
-// Delete a local upload file if it's under /uploads/
+// Delete a local upload file if it's under /uploads/ — path traversal safe
 function deleteUploadFile(urlPath) {
   if (!urlPath || !urlPath.startsWith('/uploads/')) return;
-  const filePath = path.join(UPLOADS_DIR, urlPath.replace('/uploads/', ''));
+  const filePath = path.resolve(UPLOADS_DIR, urlPath.replace(/^\/uploads\//, ''));
+  if (!filePath.startsWith(UPLOADS_DIR + path.sep)) return;
   try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
 }
 
@@ -84,6 +85,7 @@ function streamHash(filePath) {
 router.get('/', (req, res) => {
   const db = getDb();
   const { category, search, sort, limit = 20, offset = 0, developer_id } = req.query;
+  if (search && search.length > 200) return res.status(400).json({ error: 'Search query too long' });
 
   let query = `SELECT a.*, u.username as developer_name FROM apps a JOIN users u ON a.developer_id = u.id WHERE a.status = 'approved'`;
   const params = [];
@@ -191,6 +193,20 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
   if (!name || !description || !category) {
     return res.status(400).json({ error: 'Name, description, and category are required' });
   }
+  if (name.length < 2 || name.length > 200) {
+    return res.status(400).json({ error: 'App name must be 2–200 characters' });
+  }
+  if (description.length > 50000) {
+    return res.status(400).json({ error: 'Description must be under 50,000 characters' });
+  }
+
+  const { external_file_url, external_file_size } = req.body;
+  if (external_file_url && !isValidHttpUrl(external_file_url)) {
+    return res.status(400).json({ error: 'external_file_url must be a valid http or https URL' });
+  }
+  if (version && !/^[a-zA-Z0-9.\-_+]{1,50}$/.test(version)) {
+    return res.status(400).json({ error: 'Version format is invalid' });
+  }
 
   const db = getDb();
   const slug = slugify(name);
@@ -219,11 +235,7 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
     });
   }
 
-  const { external_file_url, external_file_size } = req.body;
   if (version && (req.files?.app_file?.[0] || external_file_url)) {
-    if (external_file_url && !isValidHttpUrl(external_file_url)) {
-      return res.status(400).json({ error: 'external_file_url must be a valid http or https URL' });
-    }
     let fileUrl, fileSize, fileHash = null;
     if (req.files?.app_file?.[0]) {
       const file = req.files.app_file[0];
@@ -264,7 +276,13 @@ router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
   const updates = [];
   const params = [];
 
-  if (name) { updates.push('name = ?'); params.push(name); updates.push('slug = ?'); params.push(slugify(name)); }
+  if (name) {
+    const newSlug = slugify(name);
+    const slugConflict = db.prepare('SELECT id FROM apps WHERE slug = ? AND id != ?').get(newSlug, req.params.id);
+    const finalSlug = slugConflict ? `${newSlug}-${Date.now()}` : newSlug;
+    updates.push('name = ?'); params.push(name);
+    updates.push('slug = ?'); params.push(finalSlug);
+  }
   if (description) { updates.push('description = ?'); params.push(description); }
   if (short_description) { updates.push('short_description = ?'); params.push(short_description); }
   if (category) { updates.push('category = ?'); params.push(category); }
@@ -320,6 +338,9 @@ router.post('/:id/versions', requireAuth, requireDeveloper, upload.fields([
 
   if (!version || (!req.files?.app_file?.[0] && !external_file_url)) {
     return res.status(400).json({ error: 'Version and either an app file or external URL are required' });
+  }
+  if (!/^[a-zA-Z0-9.\-_+]{1,50}$/.test(version)) {
+    return res.status(400).json({ error: 'Version format is invalid' });
   }
 
   if (external_file_url && !isValidHttpUrl(external_file_url)) {
@@ -447,8 +468,8 @@ router.delete('/:id/screenshots/:screenshotId', requireAuth, requireDeveloper, (
     .get(req.params.screenshotId, req.params.id);
   if (!screenshot) return res.status(404).json({ error: 'Screenshot not found' });
 
-  const filePath = path.join(UPLOADS_DIR, screenshot.url.replace('/uploads/', ''));
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  const filePath = path.resolve(UPLOADS_DIR, screenshot.url.replace(/^\/uploads\//, ''));
+  if (filePath.startsWith(UPLOADS_DIR + path.sep) && fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
   db.prepare('DELETE FROM app_screenshots WHERE id = ?').run(req.params.screenshotId);
   res.json({ message: 'Screenshot deleted' });
