@@ -1,0 +1,75 @@
+name: Build Desktop App
+
+on:
+  workflow_dispatch:        # manual trigger from GitHub Actions tab
+  push:
+    tags:
+      - 'desktop-v*'        # auto-trigger on tags like desktop-v1.0.0
+
+permissions:
+  contents: write           # needed to create/update releases
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            client/package-lock.json
+            launcher/package-lock.json
+
+      # 1. Build the React frontend
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build React app
+        working-directory: client
+        run: npm run build
+        env:
+          VITE_API_URL: https://primers-store.onrender.com/api
+
+      # 2. Package Electron app into .exe
+      - name: Install launcher dependencies
+        working-directory: launcher
+        run: npm install
+
+      - name: Build Electron installer
+        working-directory: launcher
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Upload the .exe to the GitHub Release
+      - name: Find installer
+        id: find
+        shell: bash
+        run: |
+          EXE=$(ls launcher/dist/*.exe | head -1)
+          echo "path=$EXE" >> $GITHUB_OUTPUT
+          echo "name=$(basename $EXE)" >> $GITHUB_OUTPUT
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || 'desktop-latest' }}
+          name: Primers Store Desktop ${{ github.ref_name || 'latest' }}
+          draft: false
+          prerelease: false
+          files: ${{ steps.find.outputs.path }}
+          body: |
+            ## Primers Store Desktop App
+
+            Download and run **${{ steps.find.outputs.name }}** to install the Primers Store desktop app.
+
+            - Silent installs with real progress tracking
+            - Native Windows integration
+            - Uninstall from within the app
