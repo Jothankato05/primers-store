@@ -47,6 +47,7 @@ export default function Navbar() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="input-field pl-10 py-2 text-sm"
+                maxLength={200}
               />
             </div>
           </form>
@@ -155,7 +156,7 @@ export default function Navbar() {
           <form onSubmit={handleSearch}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input type="text" placeholder="Search apps..." value={search} onChange={e => setSearch(e.target.value)} className="input-field pl-10 py-2 text-sm" />
+              <input type="text" placeholder="Search apps..." value={search} onChange={e => setSearch(e.target.value)} className="input-field pl-10 py-2 text-sm" maxLength={200} />
             </div>
           </form>
           <Link to="/store" className={`block py-2 text-sm font-medium ${isActive('/store') ? 'text-primer-600' : 'text-gray-700'}`} onClick={() => setMenuOpen(false)}>Store</Link>
