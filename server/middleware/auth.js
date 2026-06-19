@@ -2,6 +2,7 @@ const { getDb, verifyPassword } = require('../database');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'primers-store-secret-key-change-in-production';
+if (!process.env.JWT_SECRET) console.warn('⚠️  JWT_SECRET not set — using insecure default. Set JWT_SECRET in production.');
 const JWT_EXPIRY = '7d';
 
 function authMiddleware(req, res, next) {

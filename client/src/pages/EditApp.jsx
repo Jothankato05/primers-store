@@ -33,7 +33,8 @@ export default function EditApp() {
 
   useEffect(() => {
     const token = localStorage.getItem('primers_token');
-    fetch(`/api/admin/apps/${id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+    const base = window.__PRIMERS__?.apiUrl || '/api';
+    fetch(`${base}/apps/${id}/manage`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => {
         setApp(data.app);
@@ -43,7 +44,7 @@ export default function EditApp() {
           category: data.app.category, website: data.app.website || '',
           support_email: data.app.support_email || '', privacy_url: data.app.privacy_url || '',
         });
-        setNewVersion({ version: '', changelog: '', platform: data.app.latest_version?.platform || 'windows', min_os_version: '' });
+        setNewVersion({ version: '', changelog: '', platform: data.app.versions?.[0]?.platform || 'windows', min_os_version: '' });
       })
       .catch(() => toast.error('App not found'))
       .finally(() => setLoading(false));
@@ -63,7 +64,8 @@ export default function EditApp() {
       newScreenshots.forEach(s => formData.append('screenshots', s));
 
       const token = localStorage.getItem('primers_token');
-      const res = await fetch(`/api/apps/${id}`, {
+      const base = window.__PRIMERS__?.apiUrl || '/api';
+      const res = await fetch(`${base}/apps/${id}`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
@@ -92,7 +94,8 @@ export default function EditApp() {
       }
 
       const token = localStorage.getItem('primers_token');
-      const res = await fetch(`/api/apps/${id}/versions`, {
+      const base2 = window.__PRIMERS__?.apiUrl || '/api';
+      const res = await fetch(`${base2}/apps/${id}/versions`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
@@ -103,7 +106,8 @@ export default function EditApp() {
       toast.success('New version submitted for review');
       setShowVersionForm(false);
       setNewVersionFile(null);
-      const appRes = await fetch(`/api/admin/apps/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const base = window.__PRIMERS__?.apiUrl || '/api';
+      const appRes = await fetch(`${base}/apps/${id}/manage`, { headers: { 'Authorization': `Bearer ${token}` } });
       const appData = await appRes.json();
       setApp(appData.app);
     } catch (e) { toast.error(e.message); }
@@ -113,7 +117,8 @@ export default function EditApp() {
   const deleteScreenshot = async (screenshotId) => {
     try {
       const token = localStorage.getItem('primers_token');
-      await fetch(`/api/apps/${id}/screenshots/${screenshotId}`, {
+      const base = window.__PRIMERS__?.apiUrl || '/api';
+      await fetch(`${base}/apps/${id}/screenshots/${screenshotId}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` },
       });
       setApp(prev => ({ ...prev, screenshots: prev.screenshots.filter(s => s.id !== screenshotId) }));

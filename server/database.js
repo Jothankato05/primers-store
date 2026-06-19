@@ -171,6 +171,7 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
     CREATE INDEX IF NOT EXISTS idx_installations_user ON app_installations(user_id);
     CREATE INDEX IF NOT EXISTS idx_installations_app ON app_installations(app_id);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   `);
 }
 

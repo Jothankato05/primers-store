@@ -3,6 +3,36 @@ const router = express.Router();
 const { getDb, generateToken, hashPassword, verifyPassword } = require('../database');
 const { signToken, requireAuth } = require('../middleware/auth');
 
+// In-memory brute-force protection: 10 attempts per IP per 15 minutes
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const rec = loginAttempts.get(ip);
+  if (!rec || now >= rec.resetAt) return false;
+  return rec.count >= MAX_LOGIN_ATTEMPTS;
+}
+
+function recordFailedLogin(ip) {
+  const now = Date.now();
+  const rec = loginAttempts.get(ip);
+  if (!rec || now >= rec.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+  } else {
+    rec.count++;
+  }
+}
+
+// Cleanup old entries every 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, rec] of loginAttempts) {
+    if (now >= rec.resetAt) loginAttempts.delete(ip);
+  }
+}, LOGIN_WINDOW_MS);
+
 // Register
 router.post('/register', (req, res) => {
   const { username, email, password, display_name } = req.body;
@@ -19,7 +49,7 @@ router.post('/register', (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   if (!emailRegex.test(email)) {
     return res.status(400).json({ error: 'Invalid email format' });
   }
@@ -65,13 +95,20 @@ router.post('/login', (req, res) => {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  if (isRateLimited(ip)) {
+    return res.status(429).json({ error: 'Too many login attempts. Please try again in 15 minutes.' });
+  }
+
   const db = getDb();
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
 
   if (!user || !verifyPassword(password, user.password_hash)) {
+    recordFailedLogin(ip);
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 
+  loginAttempts.delete(ip);
   const token = signToken(user.id);
   db.prepare(
     "INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, datetime('now', '+7 days'))"
@@ -146,16 +183,16 @@ router.post('/apply-developer', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Please provide a reason (minimum 20 characters)' });
   }
 
+  if (req.user.role === 'developer' || req.user.role === 'admin') {
+    return res.status(400).json({ error: 'You are already a developer' });
+  }
+
   const existing = db.prepare(
     "SELECT id FROM developer_applications WHERE user_id = ? AND status = 'pending'"
   ).get(req.user.id);
 
   if (existing) {
     return res.status(409).json({ error: 'You already have a pending developer application' });
-  }
-
-  if (req.user.role === 'developer' || req.user.role === 'admin') {
-    return res.status(400).json({ error: 'You are already a developer' });
   }
 
   db.prepare(
