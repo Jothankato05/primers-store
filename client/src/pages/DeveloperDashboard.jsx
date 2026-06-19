@@ -19,8 +19,9 @@ export default function DeveloperDashboard() {
 
   useEffect(() => {
     const token = localStorage.getItem('primers_token');
-    fetch('/api/apps/developer/mine', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(r => r.json())
+    const base = window.__PRIMERS__?.apiUrl || '/api';
+    fetch(`${base}/apps/developer/mine`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => { if (!r.ok) throw new Error('Failed to load apps'); return r.json(); })
       .then(data => {
         const apps = data.apps || [];
         setApps(apps);
@@ -31,6 +32,7 @@ export default function DeveloperDashboard() {
           pending: apps.filter(a => a.status === 'pending' || a.status === 'reviewing').length,
         });
       })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
