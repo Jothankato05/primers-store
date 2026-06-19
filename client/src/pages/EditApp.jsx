@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDropzone } from 'react-dropzone';
-import { Image as ImageIcon, Upload, FileArchive, X, Save, PlusCircle, Trash2, ArrowLeft } from 'lucide-react';
+import { Image as ImageIcon, Upload, FileArchive, X, Save, PlusCircle, Trash2, ArrowLeft, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CATEGORIES = ['Productivity', 'Development', 'Design', 'Games', 'Education', 'Business', 'Social', 'Entertainment', 'Utilities', 'Security', 'Health & Fitness', 'Music', 'Photo & Video', 'Finance', 'Other'];
@@ -19,6 +19,7 @@ export default function EditApp() {
   const [app, setApp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [generatingDesc, setGeneratingDesc] = useState(false);
   const [form, setForm] = useState({});
   const [newIcon, setNewIcon] = useState(null);
   const [newBanner, setNewBanner] = useState(null);
@@ -52,6 +53,25 @@ export default function EditApp() {
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
   const updateVersion = (field) => (e) => setNewVersion({ ...newVersion, [field]: e.target.value });
+
+  const generateShortDesc = async () => {
+    if (!form.name || !form.description) return toast.error('Name and description must be filled in first');
+    setGeneratingDesc(true);
+    try {
+      const token = localStorage.getItem('primers_token');
+      const base = window.__PRIMERS__?.apiUrl || '/api';
+      const res = await fetch(`${base}/ai/generate-description`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name: form.name, category: form.category, description: form.description }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setForm(f => ({ ...f, short_description: data.short_description }));
+      toast.success('Short description generated');
+    } catch (e) { toast.error(e.message); }
+    finally { setGeneratingDesc(false); }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -189,7 +209,18 @@ export default function EditApp() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Short Description</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">Short Description</label>
+              <button
+                type="button"
+                onClick={generateShortDesc}
+                disabled={generatingDesc}
+                className="flex items-center gap-1 text-xs text-primer-600 hover:text-primer-700 font-medium disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {generatingDesc ? 'Generating...' : 'Generate with AI'}
+              </button>
+            </div>
             <input type="text" value={form.short_description} onChange={update('short_description')} className="input-field" maxLength={200} />
           </div>
           <div>

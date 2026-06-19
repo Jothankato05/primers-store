@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import LoadingScreen from './components/LoadingScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import DesktopBanner from './components/DesktopBanner';
+import AIChatWidget from './components/AIChatWidget';
 
 // Lazy-load all pages — Three.js only loads when Home is visited
 const Home = lazy(() => import('./pages/Home'));
@@ -70,6 +71,7 @@ export default function App() {
         </ErrorBoundary>
       </main>
       <Footer />
+      <AIChatWidget />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Upload, Image as ImageIcon, FileArchive, X, PlusCircle } from 'lucide-react';
+import { Upload, Image as ImageIcon, FileArchive, X, PlusCircle, Sparkles } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 
@@ -36,8 +36,28 @@ export default function SubmitApp() {
   const [externalFileUrl, setExternalFileUrl] = useState('');
   const [externalFileSize, setExternalFileSize] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [generatingDesc, setGeneratingDesc] = useState(false);
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+
+  const generateShortDesc = async () => {
+    if (!form.name || !form.description) return toast.error('Fill in name and description first');
+    setGeneratingDesc(true);
+    try {
+      const token = localStorage.getItem('primers_token');
+      const base = window.__PRIMERS__?.apiUrl || '/api';
+      const res = await fetch(`${base}/ai/generate-description`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name: form.name, category: form.category, description: form.description }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setForm(f => ({ ...f, short_description: data.short_description }));
+      toast.success('Short description generated');
+    } catch (e) { toast.error(e.message); }
+    finally { setGeneratingDesc(false); }
+  };
 
   const iconDropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
@@ -69,6 +89,23 @@ export default function SubmitApp() {
 
     setSubmitting(true);
     try {
+      const token = localStorage.getItem('primers_token');
+      const base = window.__PRIMERS__?.apiUrl || '/api';
+
+      // Content moderation pre-check
+      try {
+        const modRes = await fetch(`${base}/ai/moderate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ name: form.name, description: form.description, category: form.category }),
+        });
+        const modData = await modRes.json();
+        if (modRes.ok && modData.approved === false) {
+          const proceed = window.confirm(`AI content check flagged this submission:\n\n"${modData.reason}"\n\nSubmit anyway for manual admin review?`);
+          if (!proceed) { setSubmitting(false); return; }
+        }
+      } catch { /* fail open — don't block submission if AI is down */ }
+
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => { if (v) formData.append(k, v); });
       if (icon) formData.append('icon', icon);
@@ -81,10 +118,9 @@ export default function SubmitApp() {
         if (externalFileSize) formData.append('external_file_size', externalFileSize);
       }
 
-      const token = localStorage.getItem('primers_token');
-      const res = await fetch('/api/apps', {
+      const res = await fetch(`${base}/apps`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json();
@@ -112,7 +148,18 @@ export default function SubmitApp() {
             <input type="text" value={form.name} onChange={update('name')} className="input-field" placeholder="My Awesome App" required />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Short Description</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium">Short Description</label>
+              <button
+                type="button"
+                onClick={generateShortDesc}
+                disabled={generatingDesc}
+                className="flex items-center gap-1 text-xs text-primer-600 hover:text-primer-700 font-medium disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {generatingDesc ? 'Generating...' : 'Generate with AI'}
+              </button>
+            </div>
             <input type="text" value={form.short_description} onChange={update('short_description')} className="input-field" placeholder="A brief one-liner (max 200 chars)" maxLength={200} />
           </div>
           <div>
