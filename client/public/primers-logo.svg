@@ -1,24 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">
   <defs>
     <linearGradient id="pGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4361EE;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#3A56D4;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#4361EE;stop-opacity:1"></stop>
+      <stop offset="100%" style="stop-color:#3A56D4;stop-opacity:1"></stop>
     </linearGradient>
   </defs>
-  <!-- P letter -->
+  
   <g transform="translate(0,0)">
-    <rect x="2" y="2" width="22" height="56" rx="4" fill="url(#pGrad)" />
-    <rect x="24" y="2" width="22" height="22" rx="4" fill="url(#pGrad)" />
-    <rect x="24" y="23" width="22" height="11" fill="url(#pGrad)" />
-    <!-- Clouds -->
-    <ellipse cx="10" cy="16" rx="6" ry="3" fill="white" opacity="0.9"/>
-    <ellipse cx="16" cy="14" rx="4" ry="2.5" fill="white" opacity="0.85"/>
-    <ellipse cx="34" cy="44" rx="5" ry="2.5" fill="white" opacity="0.9"/>
-    <ellipse cx="40" cy="42" rx="4" ry="2" fill="white" opacity="0.85"/>
-    <!-- Birds -->
-    <path d="M8 38 Q11 35 14 38" stroke="white" stroke-width="1.2" fill="none" opacity="0.8"/>
-    <path d="M30 8 Q33 5 36 8" stroke="white" stroke-width="1.2" fill="none" opacity="0.8"/>
+    <rect x="2" y="2" width="22" height="56" rx="4" fill="url(#pGrad)"></rect>
+    <rect x="24" y="2" width="22" height="22" rx="4" fill="url(#pGrad)"></rect>
+    <rect x="24" y="23" width="22" height="11" fill="url(#pGrad)"></rect>
+    
+    <ellipse cx="10" cy="16" rx="6" ry="3" fill="white" opacity="0.9"></ellipse>
+    <ellipse cx="16" cy="14" rx="4" ry="2.5" fill="white" opacity="0.85"></ellipse>
+    <ellipse cx="34" cy="44" rx="5" ry="2.5" fill="white" opacity="0.9"></ellipse>
+    <ellipse cx="40" cy="42" rx="4" ry="2" fill="white" opacity="0.85"></ellipse>
+    
+    <path d="M8 38 Q11 35 14 38" stroke="white" stroke-width="1.2" fill="none" opacity="0.8"></path>
+    <path d="M30 8 Q33 5 36 8" stroke="white" stroke-width="1.2" fill="none" opacity="0.8"></path>
   </g>
-  <!-- Primers text -->
-  <text x="54" y="42" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="28" font-weight="700" fill="#4361EE" letter-spacing="1">Primers</text>
+  
+  <text x="54" y="42" font-family="&#39;Segoe UI&#39;,&#39;Helvetica Neue&#39;,Arial,sans-serif" font-size="28" font-weight="700" fill="#4361EE" letter-spacing="1">Primers</text>
 </svg>
