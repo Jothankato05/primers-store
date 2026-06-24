@@ -9,106 +9,60 @@ import { Upload, Shield, Download, Star, ArrowRight, Zap, Users } from 'lucide-r
 export default function Home() {
   const { user } = useAuth();
   const [featuredApps, setFeaturedApps] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const base = window.__PRIMERS__?.apiUrl || '/api';
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
-    Promise.all([
-      fetch(`${base}/apps?sort=downloads&limit=6`, { signal: controller.signal }).then(r => r.json()),
-      fetch(`${base}/apps/categories`, { signal: controller.signal }).then(r => r.json()),
-    ]).then(([appsData, catsData]) => {
-      setFeaturedApps(appsData.apps || []);
-      setCategories(catsData.categories || []);
-    }).catch(() => {
-      setFeaturedApps([]);
-      setCategories([]);
-    }).finally(() => {
-      clearTimeout(timeout);
-      setLoading(false);
-    });
+    fetch(`${base}/apps?sort=downloads&limit=6`, { signal: controller.signal })
+      .then(r => r.json())
+      .then(data => setFeaturedApps(data.apps || []))
+      .catch(() => setFeaturedApps([]))
+      .finally(() => { clearTimeout(timeout); setLoading(false); });
   }, []);
 
   return (
-    <div className="bg-[#0a0a0f]">
-      {/* Hero with 3D scene */}
-      <section className="relative overflow-hidden bg-[#0a0a0f]">
-        {/* Ambient background glows */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primer-600/10 rounded-full blur-[120px]" />
-          <div className="absolute top-20 right-1/4 w-[400px] h-[400px] bg-purple-600/8 rounded-full blur-[100px]" />
-          <div className="dot-grid absolute inset-0 opacity-60" />
-        </div>
+    <div style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
+
+      {/* Hero */}
+      <section style={{ position: 'relative', overflow: 'hidden' }}>
         <ErrorBoundary fallback={null}>
-          <Suspense fallback={null}>
-            <Hero3DScene />
-          </Suspense>
+          <Suspense fallback={null}><Hero3DScene /></Suspense>
         </ErrorBoundary>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 lg:py-32">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="dot-grid" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '-20%', left: '20%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(67,97,238,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '10%', right: '10%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.10) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', maxWidth: '80rem', margin: '0 auto', padding: '5rem 1.5rem 6rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '3rem', alignItems: 'center' }}>
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primer-600/15 border border-primer-500/25 text-primer-400 text-xs font-medium mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-primer-400 animate-pulse" />
-                Trusted App Marketplace
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: '1.5rem', padding: '0.375rem 0.875rem', background: 'rgba(67,97,238,0.12)', border: '1px solid rgba(92,124,250,0.25)', borderRadius: 'var(--radius-full)' }}>
+                <Shield size={13} color="var(--brand-text)" />
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--brand-text)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Every App Verified</span>
               </div>
-              <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]">
-                <span className="text-white">Welcome to</span>
-                <br />
-                <span className="glow-text">Primers Store</span>
+              <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 'clamp(2.5rem, 6vw, 4rem)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.02em', color: 'var(--text-strong)' }}>
+                The App Store<br />
+                <span className="glow-text">Built for Trust</span>
               </h1>
-              <p className="mt-6 text-lg text-white/60 leading-relaxed max-w-lg">
-                Your trusted marketplace for verified applications. Every app goes through rigorous review — quality and safety you can count on.
+              <p style={{ marginTop: '1.5rem', fontFamily: 'var(--font-sans)', fontSize: '1.125rem', color: 'var(--text-muted)', lineHeight: 1.65, maxWidth: '32rem' }}>
+                Every app on Primers goes through rigorous review before it reaches you. Quality and safety you can count on.
               </p>
-              <div className="flex flex-wrap gap-4 mt-10">
-                <Link
-                  to="/store"
-                  className="bg-primer-600 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-primer-500 transition-all shadow-glow hover:shadow-glow-lg hover:-translate-y-0.5 flex items-center gap-2"
-                >
-                  Browse Apps <ArrowRight className="w-4 h-4" />
-                </Link>
-                <Link
-                  to={user ? '/developer/submit' : '/register'}
-                  className="bg-white/8 backdrop-blur-sm text-white px-8 py-3.5 rounded-xl font-semibold border border-white/15 hover:border-white/30 hover:bg-white/12 transition-all flex items-center gap-2"
-                >
-                  Publish Your App
-                </Link>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '2rem' }}>
+                <Link to="/store" className="btn-primary" style={{ fontSize: '1rem', padding: '0.875rem 1.75rem' }}>Browse Apps</Link>
+                <Link to={user ? '/developer/submit' : '/register'} className="btn-secondary" style={{ fontSize: '1rem', padding: '0.875rem 1.75rem' }}>Publish Your App</Link>
               </div>
             </div>
-            <div className="flex justify-center lg:justify-end">
-              <div className="relative group">
-                <div className="absolute -inset-8 bg-primer-500/15 blur-3xl rounded-full group-hover:bg-primer-500/25 transition-all duration-700" />
-                {/* SVG mockup replacing the missing image */}
-                <div className="relative w-[340px] lg:w-[420px] rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-[#13131a] group-hover:border-primer-500/30 transition-all duration-500 group-hover:shadow-glow-lg">
-                  {/* Mock window titlebar */}
-                  <div className="flex items-center gap-1.5 px-4 py-3 bg-[#0d0d14] border-b border-white/10">
-                    <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-                    <div className="w-3 h-3 rounded-full bg-green-500/70" />
-                    <div className="ml-4 flex-1 h-5 bg-white/5 rounded border border-white/8 text-[10px] text-white/30 flex items-center px-2">primers.store</div>
-                  </div>
-                  {/* Mock app grid */}
-                  <div className="p-5 grid grid-cols-3 gap-3">
-                    {['#5c7cfa','#a855f7','#10b981','#f59e0b','#ef4444','#06b6d4'].map((c, i) => (
-                      <div key={i} className="aspect-square rounded-xl flex items-center justify-center text-white font-bold text-xl" style={{ background: `linear-gradient(135deg, ${c}33, ${c}66)`, border: `1px solid ${c}40` }}>
-                        <span style={{ color: c }}>{['P','A','B','C','D','E'][i]}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="px-5 pb-5 space-y-2">
-                    {[80, 60, 70].map((w, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10" />
-                        <div className="flex-1 space-y-1">
-                          <div className="h-2.5 bg-white/10 rounded" style={{ width: `${w}%` }} />
-                          <div className="h-2 bg-white/5 rounded" style={{ width: `${w - 20}%` }} />
-                        </div>
-                        <div className="w-14 h-6 rounded-lg bg-primer-600/30 border border-primer-500/30" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', inset: -20, background: 'radial-gradient(circle, rgba(67,97,238,0.20) 0%, transparent 70%)', borderRadius: '50%', filter: 'blur(20px)' }} />
+                <img
+                  src="/primers-mockup.jpg"
+                  alt="Primers Store"
+                  style={{ position: 'relative', maxWidth: '100%', width: 480, borderRadius: 'var(--radius-2xl)', boxShadow: '0 32px 64px rgba(0,0,0,0.6)', border: '1px solid var(--border)' }}
+                  onError={e => { e.target.style.display = 'none'; }}
+                />
               </div>
             </div>
           </div>
@@ -116,20 +70,17 @@ export default function Home() {
       </section>
 
       {/* Stats strip */}
-      <section className="border-y border-white/8 bg-white/[0.02]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex flex-wrap justify-center gap-8 sm:gap-16 text-center">
+      <section style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: 'var(--surface-sunken)' }}>
+        <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem' }}>
             {[
-              { icon: Shield, label: 'Verified Apps', value: 'Every one', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-              { icon: Zap, label: 'Free to Download', value: 'Always', color: 'text-primer-400', bg: 'bg-primer-500/10', border: 'border-primer-500/20' },
-              { icon: Users, label: 'Community Rated', value: 'Real reviews', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-            ].map(({ icon: Icon, label, value, color, bg, border }) => (
-              <div key={label} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl ${bg} border ${border}`}>
-                <Icon className={`w-5 h-5 ${color}`} />
-                <div className="text-left">
-                  <p className="text-xs text-white/40">{label}</p>
-                  <p className="text-sm font-semibold text-white">{value}</p>
-                </div>
+              { icon: Shield, label: 'Every App Verified', color: '#34d399', bg: 'rgba(16,185,129,0.10)', bd: 'rgba(16,185,129,0.20)' },
+              { icon: Zap, label: 'Always Free to Download', color: 'var(--brand-text)', bg: 'rgba(67,97,238,0.10)', bd: 'rgba(92,124,250,0.20)' },
+              { icon: Users, label: 'Real Community Reviews', color: 'var(--violet-400)', bg: 'rgba(168,85,247,0.10)', bd: 'rgba(168,85,247,0.20)' },
+            ].map(({ icon: Icon, label, color, bg, bd }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.5rem 1rem', background: bg, border: `1px solid ${bd}`, borderRadius: 'var(--radius-full)' }}>
+                <Icon size={15} color={color} />
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600, color }}>{label}</span>
               </div>
             ))}
           </div>
@@ -137,23 +88,23 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white">Why Primers Store?</h2>
-          <p className="mt-3 text-white/50">Everything you need in a modern app marketplace</p>
+      <section style={{ maxWidth: '80rem', margin: '0 auto', padding: '5rem 1.5rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 700, color: 'var(--text-strong)' }}>Why Primers Store</h2>
+          <p style={{ marginTop: '0.75rem', fontFamily: 'var(--font-sans)', color: 'var(--text-muted)' }}>A marketplace that puts quality first</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
           {[
-            { icon: Shield, iconColor: 'text-emerald-400', iconBg: 'bg-emerald-500/10 border-emerald-500/20', title: 'Verified Apps', desc: 'Every app is reviewed by our team before publishing. No malware, no surprises.' },
-            { icon: Upload, iconColor: 'text-primer-400', iconBg: 'bg-primer-500/10 border-primer-500/20', title: 'Easy Publishing', desc: 'Upload your app, set metadata, and submit for review. We handle distribution.' },
-            { icon: Star, iconColor: 'text-purple-400', iconBg: 'bg-purple-500/10 border-purple-500/20', title: 'Community Driven', desc: 'Ratings, reviews, and downloads help surface the best apps.' },
+            { icon: Shield, color: '#34d399', bg: 'rgba(16,185,129,0.12)', bd: 'rgba(16,185,129,0.20)', title: 'Verified Apps', desc: 'Every app is reviewed by our team before publishing. No malware, no surprises.' },
+            { icon: Upload, color: 'var(--brand-text)', bg: 'rgba(67,97,238,0.12)', bd: 'rgba(92,124,250,0.20)', title: 'Easy Publishing', desc: 'Upload your app, set metadata, and submit for review. We handle distribution.' },
+            { icon: Star, color: 'var(--violet-400)', bg: 'rgba(168,85,247,0.12)', bd: 'rgba(168,85,247,0.20)', title: 'Community Driven', desc: 'Ratings, reviews, and download counts help surface the best apps for everyone.' },
           ].map((f, i) => (
-            <div key={i} className="gradient-border text-center p-8 rounded-2xl bg-[#13131a] border border-white/8 hover:border-white/15 transition-all duration-300 group">
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mx-auto border ${f.iconBg}`}>
-                <f.icon className={`w-7 h-7 ${f.iconColor}`} />
+            <div key={i} className="card gradient-border" style={{ padding: '2rem', textAlign: 'center' }}>
+              <div style={{ width: 52, height: 52, background: f.bg, border: `1px solid ${f.bd}`, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                <f.icon size={24} color={f.color} />
               </div>
-              <h3 className="mt-5 font-semibold text-lg text-white">{f.title}</h3>
-              <p className="mt-2 text-sm text-white/50 leading-relaxed">{f.desc}</p>
+              <h3 style={{ margin: '1rem 0 0', fontFamily: 'var(--font-sans)', fontSize: '1.0625rem', fontWeight: 700, color: 'var(--text-strong)' }}>{f.title}</h3>
+              <p style={{ margin: '0.5rem 0 0', fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.65 }}>{f.desc}</p>
             </div>
           ))}
         </div>
@@ -161,18 +112,18 @@ export default function Home() {
 
       {/* Popular Apps */}
       {!loading && featuredApps.length > 0 && (
-        <section className="bg-[#0d0d14] py-16 lg:py-20 border-t border-white/8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="flex items-center justify-between mb-8">
+        <section style={{ background: 'var(--surface-sunken)', padding: '5rem 0' }}>
+          <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
               <div>
-                <h2 className="text-2xl font-bold text-white">Popular Apps</h2>
-                <p className="text-white/40 text-sm mt-1">Most downloaded by the community</p>
+                <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-strong)' }}>Popular Apps</h2>
+                <p style={{ margin: '0.25rem 0 0', fontFamily: 'var(--font-sans)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Most downloaded on the store</p>
               </div>
-              <Link to="/store" className="text-primer-400 hover:text-primer-300 font-medium text-sm flex items-center gap-1 transition-colors">
-                View all <ArrowRight className="w-4 h-4" />
+              <Link to="/store" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--brand-text)', textDecoration: 'none' }}>
+                View All <ArrowRight size={15} />
               </Link>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
               {featuredApps.map(app => <AppCard3D key={app.id} app={app} />)}
             </div>
           </div>
@@ -180,26 +131,17 @@ export default function Home() {
       )}
 
       {/* CTA */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primer-900/80 via-[#0a0a0f] to-purple-900/40" />
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primer-600/20 rounded-full blur-[80px]" />
-        </div>
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-16 lg:py-24 text-center">
-          <h2 className="text-3xl lg:text-4xl font-bold text-white">Ready to publish your app?</h2>
-          <p className="mt-4 text-white/50 max-w-xl mx-auto leading-relaxed">Join developers distributing their apps on Primers Store. Submit for review and reach users directly.</p>
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <Link
-              to={user ? '/developer/submit' : '/register'}
-              className="bg-primer-600 text-white px-8 py-3.5 rounded-xl font-semibold hover:bg-primer-500 transition-all shadow-glow hover:shadow-glow-lg hover:-translate-y-0.5 flex items-center gap-2"
-            >
-              <Upload className="w-5 h-5" /> Start Publishing
+      <section style={{ background: 'linear-gradient(135deg, #1a1a3e 0%, #0d0d20 50%, #1a0d2e 100%)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 600, height: 400, background: 'radial-gradient(ellipse, rgba(67,97,238,0.20) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', maxWidth: '48rem', margin: '0 auto', padding: '5rem 1.5rem', textAlign: 'center' }}>
+          <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.1 }}>Ready to Publish Your App?</h2>
+          <p style={{ marginTop: '1rem', fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--text-muted)', lineHeight: 1.65 }}>Join developers distributing their apps on Primers Store. Submit for review and reach users directly.</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem', marginTop: '2rem' }}>
+            <Link to={user ? '/developer/submit' : '/register'} className="btn-primary" style={{ fontSize: '1rem', padding: '0.875rem 1.75rem', gap: 8, display: 'inline-flex', alignItems: 'center' }}>
+              <Upload size={18} /> Start Publishing
             </Link>
-            <Link
-              to="/store"
-              className="bg-white/8 backdrop-blur-sm text-white px-8 py-3.5 rounded-xl font-semibold border border-white/15 hover:border-white/30 hover:bg-white/12 transition-all flex items-center gap-2"
-            >
-              <Download className="w-5 h-5" /> Browse All Apps
+            <Link to="/store" className="btn-secondary" style={{ fontSize: '1rem', padding: '0.875rem 1.75rem', gap: 8, display: 'inline-flex', alignItems: 'center' }}>
+              <Download size={18} /> Browse All Apps
             </Link>
           </div>
         </div>

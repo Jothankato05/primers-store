@@ -34,7 +34,8 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0" style={noDrag}>
-            <img src="/primers-logo.svg" alt="Primers" className="h-10 brightness-200" />
+            <img src="/primers-logo.svg" alt="Primers" style={{ height: 32 }} onError={e => { e.target.style.display='none'; }} />
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', background: 'var(--gradient-brand)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Primers</span>
           </Link>
 
           {/* Search */}
