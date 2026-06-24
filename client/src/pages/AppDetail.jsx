@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import StarRating from '../components/StarRating';
+import { StarRating } from '../components/ds/StarRating';
+import { Badge } from '../components/ds/Badge';
 import { Download, Globe, Mail, Shield, Monitor, Smartphone, Apple, Calendar, User, ChevronRight, Star, ThumbsUp, ThumbsDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -223,7 +224,7 @@ export default function AppDetail() {
           <div className="lg:col-span-2 space-y-8">
             {/* Header */}
             <div className="flex items-start gap-5">
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primer-500 to-primer-700 flex items-center justify-center shrink-0 overflow-hidden shadow-2xl shadow-primer-500/30 ring-2 ring-primer-500/20">
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primer-500 to-primer-700 flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-primer-500/20" style={{ boxShadow: 'var(--glow)' }}>
                 {app.icon_url ? (
                   <img src={app.icon_url} alt={app.name} className="w-full h-full object-cover" />
                 ) : (
@@ -351,7 +352,7 @@ export default function AppDetail() {
 
           {/* Sidebar */}
           <div className="space-y-4">
-            <div className="bg-[#13131a] border border-white/10 rounded-xl p-5 sticky top-24">
+            <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '1.25rem', position: 'sticky', top: 24 }}>
               {app.price > 0 ? (
                 <div className="text-2xl font-bold text-white mb-3">${app.price.toFixed(2)}</div>
               ) : (
@@ -361,7 +362,7 @@ export default function AppDetail() {
               {app.is_installed ? (
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center justify-between">
-                    <span className="inline-block px-3 py-1 bg-emerald-500/15 text-emerald-400 text-sm font-medium rounded-full border border-emerald-500/25">Installed</span>
+                    <Badge tone="success" dot>Installed</Badge>
                   </div>
                   <button onClick={handleUninstall} className="btn-secondary w-full flex items-center justify-center gap-2">
                     Uninstall
@@ -372,7 +373,8 @@ export default function AppDetail() {
                   <button
                     onClick={handleInstall}
                     disabled={installing}
-                    className="w-full flex items-center justify-center gap-2 mb-3 px-6 py-3 rounded-xl font-semibold bg-primer-600 text-white hover:bg-primer-500 transition-all shadow-glow hover:shadow-glow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="btn-primary w-full mb-3"
+                    style={{ padding: '0.75rem 1.5rem', fontSize: '1rem', borderRadius: 'var(--radius-xl)', opacity: installing ? 0.6 : 1, cursor: installing ? 'not-allowed' : 'pointer' }}
                   >
                     <Download className="w-5 h-5" /> {installing ? 'Installing...' : 'Install'}
                   </button>

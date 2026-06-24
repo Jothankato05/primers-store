@@ -3,6 +3,35 @@ import { useSearchParams } from 'react-router-dom';
 import AppCard3D from '../components/AppCard3D';
 import { Search, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
+const inputStyle = {
+  width: '100%',
+  padding: '0.625rem 1rem 0.625rem 2.375rem',
+  background: 'var(--surface-input)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 'var(--radius-md)',
+  color: 'var(--text-strong)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '0.9375rem',
+  outline: 'none',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  transition: 'border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease)',
+};
+
+const selectStyle = {
+  padding: '0.625rem 1rem',
+  background: 'var(--surface-input)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 'var(--radius-md)',
+  color: 'var(--text-body)',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '0.9375rem',
+  outline: 'none',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  cursor: 'pointer',
+};
+
 export default function Store() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [apps, setApps] = useState([]);
@@ -43,107 +72,144 @@ export default function Store() {
   const hasFilters = search || category;
 
   const skeletonCards = [...Array(6)].map((_, i) => (
-    <div key={i} className="bg-[#13131a] border border-white/10 rounded-xl p-5 animate-pulse">
-      <div className="flex gap-4">
-        <div className="w-14 h-14 bg-white/8 rounded-xl shrink-0" />
-        <div className="flex-1 space-y-2">
-          <div className="h-5 bg-white/8 rounded w-3/4" />
-          <div className="h-3 bg-white/5 rounded w-1/3" />
-          <div className="h-3 bg-white/5 rounded w-full" />
-          <div className="h-3 bg-white/5 rounded w-2/3" />
+    <div key={i} style={{ background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }} className="animate-pulse">
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.08)', borderRadius: 'var(--radius-lg)', flexShrink: 0 }} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ height: 20, background: 'rgba(255,255,255,0.08)', borderRadius: 4, width: '75%' }} />
+          <div style={{ height: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 4, width: '33%' }} />
+          <div style={{ height: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 4, width: '100%' }} />
+          <div style={{ height: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 4, width: '66%' }} />
         </div>
       </div>
     </div>
   ));
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Primers Store</h1>
-          <p className="text-white/50 mt-1">Browse verified apps — every app reviewed for quality and safety.</p>
+    <div style={{ minHeight: '100vh', background: 'var(--surface-page)', fontFamily: 'var(--font-sans)' }}>
+      <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '2.5rem 1.5rem' }}>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'var(--text-strong)', margin: 0 }}>Primers Store</h1>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.25rem', fontSize: '1rem' }}>Browse verified apps — every app reviewed for quality and safety.</p>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 400 }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
             <input
               type="text"
               placeholder="Search apps..."
               value={search}
               onChange={e => updateFilter('search', e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-white/20 bg-white/8 backdrop-blur-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primer-500 focus:border-transparent transition-all"
+              style={inputStyle}
+              onFocus={e => { e.target.style.borderColor = 'var(--border-brand)'; e.target.style.boxShadow = '0 0 0 3px rgba(92,124,250,0.15)'; }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; e.target.style.boxShadow = 'none'; }}
             />
           </div>
+
           <select
             value={category}
             onChange={e => updateFilter('category', e.target.value)}
-            className="px-4 py-2.5 rounded-lg border border-white/20 bg-white/8 backdrop-blur-sm text-white focus:outline-none focus:ring-2 focus:ring-primer-500 transition-all"
+            style={selectStyle}
+            onFocus={e => { e.target.style.borderColor = 'var(--border-brand)'; }}
+            onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; }}
           >
             <option value="">All Categories</option>
             {categories.map(c => (
               <option key={c.category} value={c.category}>{c.category} ({c.count})</option>
             ))}
           </select>
+
           <select
             value={sort}
             onChange={e => updateFilter('sort', e.target.value)}
-            className="px-4 py-2.5 rounded-lg border border-white/20 bg-white/8 backdrop-blur-sm text-white focus:outline-none focus:ring-2 focus:ring-primer-500 transition-all"
+            style={selectStyle}
+            onFocus={e => { e.target.style.borderColor = 'var(--border-brand)'; }}
+            onBlur={e => { e.target.style.borderColor = 'var(--border-strong)'; }}
           >
             <option value="downloads">Most Downloaded</option>
             <option value="rating">Highest Rated</option>
             <option value="newest">Newest</option>
             <option value="name">Name A–Z</option>
           </select>
+
           {hasFilters && (
             <button
               onClick={() => setSearchParams({})}
-              className="flex items-center gap-1 text-sm text-white/50 hover:text-white px-3 py-2 rounded-lg hover:bg-white/8 border border-white/10 transition-colors"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '0.5rem 0.75rem',
+                background: 'none',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-sans)', fontSize: '0.9375rem',
+                cursor: 'pointer',
+                transition: 'color var(--duration) var(--ease), background var(--duration) var(--ease)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-strong)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'none'; }}
             >
-              <X className="w-4 h-4" /> Clear
+              <X size={16} /> Clear
             </button>
           )}
         </div>
 
         {/* Results */}
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">{skeletonCards}</div>
+          <div className="store-apps-grid">{skeletonCards}</div>
         ) : apps.length === 0 ? (
-          <div className="text-center py-20">
-            <Filter className="w-12 h-12 text-white/20 mx-auto" />
-            <h3 className="mt-4 text-lg font-semibold text-white/70">No apps found</h3>
-            <p className="text-white/40 mt-1">Try adjusting your search or filters.</p>
+          <div style={{ textAlign: 'center', padding: '5rem 0' }}>
+            <Filter size={48} style={{ color: 'var(--text-subtle)', margin: '0 auto 1rem' }} />
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-muted)', margin: 0 }}>No apps found</h3>
+            <p style={{ color: 'var(--text-subtle)', marginTop: '0.25rem' }}>Try adjusting your search or filters.</p>
             {hasFilters && (
-              <button onClick={() => setSearchParams({})} className="mt-4 btn-secondary btn-sm">Clear filters</button>
+              <button onClick={() => setSearchParams({})} className="btn-secondary btn-sm" style={{ marginTop: '1rem' }}>Clear filters</button>
             )}
           </div>
         ) : (
           <>
-            <p className="text-sm text-white/40 mb-4">
+            <p style={{ fontSize: '0.9375rem', color: 'var(--text-subtle)', marginBottom: '1rem' }}>
               {total} app{total !== 1 ? 's' : ''} found
-              {category && <span> in <strong className="text-white/60">{category}</strong></span>}
+              {category && <span> in <strong style={{ color: 'var(--text-muted)' }}>{category}</strong></span>}
             </p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="store-apps-grid">
               {apps.map(app => <AppCard3D key={app.id} app={app} />)}
             </div>
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-10">
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: '2.5rem' }}>
                 <button
                   onClick={() => updateFilter('page', String(page - 1))}
                   disabled={page === 1}
-                  className="p-2 rounded-lg hover:bg-white/8 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-white/60 hover:text-white"
+                  style={{
+                    padding: 8, borderRadius: 'var(--radius-md)',
+                    background: 'none', border: '1px solid var(--border)',
+                    color: 'var(--text-muted)', cursor: page === 1 ? 'not-allowed' : 'pointer',
+                    opacity: page === 1 ? 0.3 : 1,
+                    transition: 'background var(--duration) var(--ease)',
+                    display: 'flex', alignItems: 'center',
+                  }}
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft size={20} />
                 </button>
                 {[...Array(totalPages)].map((_, i) => (
                   <button
                     key={i}
                     onClick={() => updateFilter('page', String(i + 1))}
-                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                      page === i + 1 ? 'bg-primer-600 text-white shadow-glow' : 'hover:bg-white/8 text-white/60 hover:text-white border border-white/10'
-                    }`}
+                    style={{
+                      width: 36, height: 36,
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.875rem', fontWeight: 500,
+                      cursor: 'pointer',
+                      background: page === i + 1 ? 'var(--brand)' : 'none',
+                      color: page === i + 1 ? '#fff' : 'var(--text-muted)',
+                      border: page === i + 1 ? '1px solid transparent' : '1px solid var(--border)',
+                      boxShadow: page === i + 1 ? 'var(--glow)' : 'none',
+                      fontFamily: 'var(--font-sans)',
+                      transition: 'background var(--duration) var(--ease), color var(--duration) var(--ease)',
+                    }}
                   >
                     {i + 1}
                   </button>
@@ -151,15 +217,36 @@ export default function Store() {
                 <button
                   onClick={() => updateFilter('page', String(page + 1))}
                   disabled={page === totalPages}
-                  className="p-2 rounded-lg hover:bg-white/8 border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-white/60 hover:text-white"
+                  style={{
+                    padding: 8, borderRadius: 'var(--radius-md)',
+                    background: 'none', border: '1px solid var(--border)',
+                    color: 'var(--text-muted)', cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                    opacity: page === totalPages ? 0.3 : 1,
+                    transition: 'background var(--duration) var(--ease)',
+                    display: 'flex', alignItems: 'center',
+                  }}
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight size={20} />
                 </button>
               </div>
             )}
           </>
         )}
       </div>
+
+      <style>{`
+        .store-apps-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+        @media (min-width: 768px) {
+          .store-apps-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 1024px) {
+          .store-apps-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+      `}</style>
     </div>
   );
 }
