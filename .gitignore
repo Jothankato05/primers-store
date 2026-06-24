@@ -3,3 +3,4 @@ server/uploads/
 *.db
 client/dist/
 .env
+.claude/worktrees/
