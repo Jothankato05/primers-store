@@ -1,197 +1,165 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const mongoose = require('mongoose');
 const crypto = require('crypto');
 
-const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, 'primers_store.db');
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/primers_store';
 
-let db;
-
-function getDb() {
-  if (!db) {
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-    initTables();
+async function connectDb() {
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(MONGODB_URI);
+    console.log('✅ MongoDB connected');
   }
-  return db;
 }
 
-function initTables() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      display_name TEXT,
-      role TEXT DEFAULT 'user' CHECK(role IN ('user','developer','admin')),
-      email_verified INTEGER DEFAULT 0,
-      verification_token TEXT,
-      avatar_url TEXT,
-      bio TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+const toJSON = {
+  transform(doc, ret) {
+    ret.id = ret._id.toString();
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+  },
+};
 
-    CREATE TABLE IF NOT EXISTS apps (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      developer_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      slug TEXT UNIQUE NOT NULL,
-      description TEXT,
-      short_description TEXT,
-      category TEXT NOT NULL,
-      icon_url TEXT,
-      banner_url TEXT,
-      website TEXT,
-      support_email TEXT,
-      privacy_url TEXT,
-      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','reviewing','approved','rejected','suspended','removed')),
-      review_notes TEXT,
-      price REAL DEFAULT 0.0,
-      downloads_count INTEGER DEFAULT 0,
-      rating_avg REAL DEFAULT 0.0,
-      rating_count INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      published_at DATETIME,
-      FOREIGN KEY (developer_id) REFERENCES users(id)
-    );
+const ts = (updated = true) => ({
+  timestamps: updated
+    ? { createdAt: 'created_at', updatedAt: 'updated_at' }
+    : { createdAt: 'created_at', updatedAt: false },
+});
 
-    CREATE TABLE IF NOT EXISTS app_versions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      app_id INTEGER NOT NULL,
-      version TEXT NOT NULL,
-      changelog TEXT,
-      file_url TEXT,
-      file_size INTEGER,
-      file_hash TEXT,
-      platform TEXT DEFAULT 'windows' CHECK(platform IN ('windows','macos','linux','android','ios','web')),
-      min_os_version TEXT,
-      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
-      downloads_count INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE
-    );
+const UserSchema = new mongoose.Schema({
+  username: { type: String, unique: true, required: true },
+  email: { type: String, unique: true, required: true },
+  password_hash: { type: String, required: true },
+  display_name: String,
+  role: { type: String, default: 'user', enum: ['user', 'developer', 'admin'] },
+  email_verified: { type: Boolean, default: false },
+  verification_token: String,
+  avatar_url: String,
+  bio: String,
+}, { ...ts(), toJSON });
 
-    CREATE TABLE IF NOT EXISTS app_screenshots (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      app_id INTEGER NOT NULL,
-      url TEXT NOT NULL,
-      caption TEXT,
-      sort_order INTEGER DEFAULT 0,
-      FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE
-    );
+const AppSchema = new mongoose.Schema({
+  developer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  slug: { type: String, unique: true, required: true },
+  description: String,
+  short_description: String,
+  category: { type: String, required: true },
+  icon_url: String,
+  banner_url: String,
+  website: String,
+  support_email: String,
+  privacy_url: String,
+  status: { type: String, default: 'pending', enum: ['pending', 'reviewing', 'approved', 'rejected', 'suspended', 'removed'] },
+  review_notes: String,
+  price: { type: Number, default: 0.0 },
+  downloads_count: { type: Number, default: 0 },
+  rating_avg: { type: Number, default: 0.0 },
+  rating_count: { type: Number, default: 0 },
+  published_at: Date,
+}, { ...ts(), toJSON });
 
-    CREATE TABLE IF NOT EXISTS reviews (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      app_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-      title TEXT,
-      body TEXT,
-      helpful_count INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      UNIQUE(app_id, user_id)
-    );
+const AppVersionSchema = new mongoose.Schema({
+  app_id: { type: mongoose.Schema.Types.ObjectId, ref: 'App', required: true },
+  version: { type: String, required: true },
+  changelog: String,
+  file_url: String,
+  file_size: Number,
+  file_hash: String,
+  platform: { type: String, default: 'windows', enum: ['windows', 'macos', 'linux', 'android', 'ios', 'web'] },
+  min_os_version: String,
+  status: { type: String, default: 'pending', enum: ['pending', 'approved', 'rejected'] },
+  downloads_count: { type: Number, default: 0 },
+}, { ...ts(false), toJSON });
 
-    CREATE TABLE IF NOT EXISTS review_votes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      review_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      vote INTEGER CHECK(vote IN (-1, 1)),
-      FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE,
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      UNIQUE(review_id, user_id)
-    );
+const AppScreenshotSchema = new mongoose.Schema({
+  app_id: { type: mongoose.Schema.Types.ObjectId, ref: 'App', required: true },
+  url: { type: String, required: true },
+  caption: String,
+  sort_order: { type: Number, default: 0 },
+}, { toJSON });
 
-    CREATE TABLE IF NOT EXISTS downloads (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      app_id INTEGER NOT NULL,
-      version_id INTEGER,
-      user_id INTEGER,
-      ip_address TEXT,
-      user_agent TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (app_id) REFERENCES apps(id),
-      FOREIGN KEY (version_id) REFERENCES app_versions(id),
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
+const ReviewSchema = new mongoose.Schema({
+  app_id: { type: mongoose.Schema.Types.ObjectId, ref: 'App', required: true },
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  title: String,
+  body: String,
+  helpful_count: { type: Number, default: 0 },
+}, { ...ts(), toJSON });
 
-    CREATE TABLE IF NOT EXISTS developer_applications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      company_name TEXT,
-      reason TEXT,
-      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
-      reviewed_by INTEGER,
-      review_notes TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      reviewed_at DATETIME,
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (reviewed_by) REFERENCES users(id)
-    );
+ReviewSchema.index({ app_id: 1, user_id: 1 }, { unique: true });
 
-    CREATE TABLE IF NOT EXISTS sessions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      token TEXT UNIQUE NOT NULL,
-      expires_at DATETIME NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
+const ReviewVoteSchema = new mongoose.Schema({
+  review_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Review', required: true },
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  vote: { type: Number, enum: [-1, 1] },
+}, { toJSON });
 
-    CREATE TABLE IF NOT EXISTS app_installations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      app_id INTEGER NOT NULL,
-      version_id INTEGER,
-      installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
-      FOREIGN KEY (version_id) REFERENCES app_versions(id),
-      UNIQUE(user_id, app_id)
-    );
-  `);
+ReviewVoteSchema.index({ review_id: 1, user_id: 1 }, { unique: true });
 
-  // Create indexes
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_apps_status ON apps(status);
-    CREATE INDEX IF NOT EXISTS idx_apps_category ON apps(category);
-    CREATE INDEX IF NOT EXISTS idx_apps_developer ON apps(developer_id);
-    CREATE INDEX IF NOT EXISTS idx_apps_slug ON apps(slug);
-    CREATE INDEX IF NOT EXISTS idx_app_versions_app ON app_versions(app_id);
-    CREATE INDEX IF NOT EXISTS idx_reviews_app ON reviews(app_id);
-    CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
-    CREATE INDEX IF NOT EXISTS idx_downloads_app ON downloads(app_id);
-    CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-    CREATE INDEX IF NOT EXISTS idx_installations_user ON app_installations(user_id);
-    CREATE INDEX IF NOT EXISTS idx_installations_app ON app_installations(app_id);
-    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-  `);
-}
+const DownloadSchema = new mongoose.Schema({
+  app_id: { type: mongoose.Schema.Types.ObjectId, ref: 'App', required: true },
+  version_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AppVersion' },
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  ip_address: String,
+  user_agent: String,
+}, { ...ts(false), toJSON });
 
-// Helper: generate unique token
+const DeveloperApplicationSchema = new mongoose.Schema({
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  company_name: String,
+  reason: String,
+  status: { type: String, default: 'pending', enum: ['pending', 'approved', 'rejected'] },
+  reviewed_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  review_notes: String,
+  reviewed_at: Date,
+}, { ...ts(false), toJSON });
+
+const SessionSchema = new mongoose.Schema({
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  token: { type: String, unique: true, required: true },
+  expires_at: { type: Date, required: true },
+}, { ...ts(false), toJSON });
+
+const AppInstallationSchema = new mongoose.Schema({
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  app_id: { type: mongoose.Schema.Types.ObjectId, ref: 'App', required: true },
+  version_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AppVersion' },
+  installed_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
+}, { toJSON });
+
+AppInstallationSchema.index({ user_id: 1, app_id: 1 }, { unique: true });
+
+const User = mongoose.model('User', UserSchema);
+const App = mongoose.model('App', AppSchema);
+const AppVersion = mongoose.model('AppVersion', AppVersionSchema);
+const AppScreenshot = mongoose.model('AppScreenshot', AppScreenshotSchema);
+const Review = mongoose.model('Review', ReviewSchema);
+const ReviewVote = mongoose.model('ReviewVote', ReviewVoteSchema);
+const Download = mongoose.model('Download', DownloadSchema);
+const DeveloperApplication = mongoose.model('DeveloperApplication', DeveloperApplicationSchema);
+const Session = mongoose.model('Session', SessionSchema);
+const AppInstallation = mongoose.model('AppInstallation', AppInstallationSchema);
+
 function generateToken(length = 64) {
   return crypto.randomBytes(length).toString('hex');
 }
 
-// Helper: hash password
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
   return `${salt}:${hash}`;
 }
 
-// Helper: verify password
 function verifyPassword(password, stored) {
   const [salt, hash] = stored.split(':');
   const computed = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
   return hash === computed;
 }
 
-module.exports = { getDb, generateToken, hashPassword, verifyPassword };
+module.exports = {
+  connectDb, generateToken, hashPassword, verifyPassword,
+  User, App, AppVersion, AppScreenshot, Review, ReviewVote,
+  Download, DeveloperApplication, Session, AppInstallation,
+};

@@ -1,250 +1,295 @@
 const express = require('express');
 const router = express.Router();
-const { getDb } = require('../database');
+const { User, App, AppVersion, AppScreenshot, Review, DeveloperApplication } = require('../database');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 router.use(requireAuth, requireAdmin);
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // GET /admin/dashboard
-router.get('/dashboard', (req, res) => {
-  const db = getDb();
-  const stats = {
-    total_users: db.prepare('SELECT COUNT(*) as count FROM users').get().count,
-    total_apps: db.prepare('SELECT COUNT(*) as count FROM apps').get().count,
-    pending_apps: db.prepare("SELECT COUNT(*) as count FROM apps WHERE status = 'pending'").get().count,
-    approved_apps: db.prepare("SELECT COUNT(*) as count FROM apps WHERE status = 'approved'").get().count,
-    total_downloads: db.prepare('SELECT COALESCE(SUM(downloads_count), 0) as count FROM apps').get().count,
-    total_reviews: db.prepare('SELECT COUNT(*) as count FROM reviews').get().count,
-    pending_developers: db.prepare("SELECT COUNT(*) as count FROM developer_applications WHERE status = 'pending'").get().count,
-    pending_versions: db.prepare("SELECT COUNT(*) as count FROM app_versions WHERE status = 'pending'").get().count,
-  };
-  res.json({ stats });
+router.get('/dashboard', async (req, res, next) => {
+  try {
+    const [totalDownloads] = await App.aggregate([{ $group: { _id: null, total: { $sum: '$downloads_count' } } }]);
+    const stats = {
+      total_users: await User.countDocuments(),
+      total_apps: await App.countDocuments(),
+      pending_apps: await App.countDocuments({ status: 'pending' }),
+      approved_apps: await App.countDocuments({ status: 'approved' }),
+      total_downloads: totalDownloads?.total || 0,
+      total_reviews: await Review.countDocuments(),
+      pending_developers: await DeveloperApplication.countDocuments({ status: 'pending' }),
+      pending_versions: await AppVersion.countDocuments({ status: 'pending' }),
+    };
+    res.json({ stats });
+  } catch (err) { next(err); }
 });
 
 // GET /admin/users
-router.get('/users', (req, res) => {
-  const { search, role, limit = 50, offset = 0 } = req.query;
-  const db = getDb();
+router.get('/users', async (req, res, next) => {
+  try {
+    const { search, role, limit = 50, offset = 0 } = req.query;
+    const filter = {};
+    if (search) {
+      const re = new RegExp(escapeRegex(search), 'i');
+      filter.$or = [{ username: re }, { email: re }, { display_name: re }];
+    }
+    if (role) filter.role = role;
 
-  let query = 'SELECT id, username, email, display_name, role, email_verified, created_at FROM users WHERE 1=1';
-  const params = [];
+    const total = await User.countDocuments(filter);
+    const docs = await User.find(filter, 'username email display_name role email_verified created_at')
+      .sort({ created_at: -1 })
+      .skip(Number(offset))
+      .limit(Number(limit));
 
-  if (search) {
-    query += ' AND (username LIKE ? OR email LIKE ? OR display_name LIKE ?)';
-    params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-  }
-  if (role) {
-    query += ' AND role = ?';
-    params.push(role);
-  }
-
-  const countQuery = query.replace(/SELECT.*?FROM/, 'SELECT COUNT(*) as total FROM');
-  const { total } = db.prepare(countQuery).get(...params);
-
-  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-  params.push(Number(limit), Number(offset));
-
-  const users = db.prepare(query).all(...params);
-  res.json({ users, total });
+    res.json({ users: docs.map(u => u.toJSON()), total });
+  } catch (err) { next(err); }
 });
 
 // PATCH /admin/users/:id/role
-router.patch('/users/:id/role', (req, res) => {
-  const { role } = req.body;
-  if (!['user', 'developer', 'admin'].includes(role)) {
-    return res.status(400).json({ error: 'Invalid role' });
-  }
+router.patch('/users/:id/role', async (req, res, next) => {
+  try {
+    const { role } = req.body;
+    if (!['user', 'developer', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
 
-  const db = getDb();
-  const result = db.prepare('UPDATE users SET role = ?, updated_at = datetime("now") WHERE id = ?').run(role, req.params.id);
-
-  if (result.changes === 0) return res.status(404).json({ error: 'User not found' });
-  res.json({ message: `User role updated to ${role}` });
+    const user = await User.findByIdAndUpdate(req.params.id, { role });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: `User role updated to ${role}` });
+  } catch (err) { next(err); }
 });
 
 // PATCH /admin/users/:id/verify
-router.patch('/users/:id/verify', (req, res) => {
-  const db = getDb();
-  const result = db.prepare('UPDATE users SET email_verified = 1, verification_token = NULL, updated_at = datetime("now") WHERE id = ?').run(req.params.id);
-
-  if (result.changes === 0) return res.status(404).json({ error: 'User not found' });
-  res.json({ message: 'Email verified' });
+router.patch('/users/:id/verify', async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndUpdate(req.params.id, { email_verified: true, verification_token: null });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'Email verified' });
+  } catch (err) { next(err); }
 });
 
 // GET /admin/apps
-router.get('/apps', (req, res) => {
-  const { status, search, category, limit = 50, offset = 0 } = req.query;
-  const db = getDb();
+router.get('/apps', async (req, res, next) => {
+  try {
+    const { status, search, category, limit = 50, offset = 0 } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (category) filter.category = category;
+    if (search) {
+      const re = new RegExp(escapeRegex(search), 'i');
+      filter.$or = [{ name: re }, { description: re }];
+    }
 
-  let query = `SELECT a.*, u.username as developer_name, u.email as developer_email
-               FROM apps a JOIN users u ON a.developer_id = u.id WHERE 1=1`;
-  const params = [];
+    const total = await App.countDocuments(filter);
+    const docs = await App.find(filter)
+      .sort({ updated_at: -1 })
+      .skip(Number(offset))
+      .limit(Number(limit))
+      .populate('developer_id', 'username email display_name');
 
-  if (status) { query += ' AND a.status = ?'; params.push(status); }
-  if (search) { query += ' AND (a.name LIKE ? OR a.description LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
-  if (category) { query += ' AND a.category = ?'; params.push(category); }
+    const apps = docs.map(d => {
+      const obj = d.toJSON();
+      if (obj.developer_id && typeof obj.developer_id === 'object') {
+        obj.developer_name = obj.developer_id.username;
+        obj.developer_email = obj.developer_id.email;
+        obj.developer_id = obj.developer_id.id;
+      }
+      return obj;
+    });
 
-  const countQuery = query.replace(/SELECT.*?FROM/, 'SELECT COUNT(*) as total FROM');
-  const { total } = db.prepare(countQuery).get(...params);
-
-  query += ' ORDER BY a.updated_at DESC LIMIT ? OFFSET ?';
-  params.push(Number(limit), Number(offset));
-
-  const apps = db.prepare(query).all(...params);
-  res.json({ apps, total });
+    res.json({ apps, total });
+  } catch (err) { next(err); }
 });
 
 // GET /admin/apps/:id
-router.get('/apps/:id', (req, res) => {
-  const db = getDb();
+router.get('/apps/:id', async (req, res, next) => {
+  try {
+    const doc = await App.findById(req.params.id).populate('developer_id', 'username email display_name');
+    if (!doc) return res.status(404).json({ error: 'App not found' });
 
-  const app = db.prepare(`
-    SELECT a.*, u.username as developer_name, u.email as developer_email, u.display_name as developer_display
-    FROM apps a JOIN users u ON a.developer_id = u.id WHERE a.id = ?
-  `).get(req.params.id);
+    const app = doc.toJSON();
+    if (app.developer_id && typeof app.developer_id === 'object') {
+      app.developer_name = app.developer_id.username;
+      app.developer_email = app.developer_id.email;
+      app.developer_display = app.developer_id.display_name;
+      app.developer_id = app.developer_id.id;
+    }
 
-  if (!app) return res.status(404).json({ error: 'App not found' });
+    const screenshots = await AppScreenshot.find({ app_id: doc._id }).sort({ sort_order: 1 });
+    const versions = await AppVersion.find({ app_id: doc._id }).sort({ created_at: -1 });
+    const reviewDocs = await Review.find({ app_id: doc._id })
+      .sort({ created_at: -1 })
+      .populate('user_id', 'username');
 
-  app.screenshots = db.prepare('SELECT * FROM app_screenshots WHERE app_id = ? ORDER BY sort_order').all(app.id);
-  app.versions = db.prepare('SELECT * FROM app_versions WHERE app_id = ? ORDER BY created_at DESC').all(app.id);
-  app.reviews = db.prepare(
-    'SELECT r.*, u.username FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.app_id = ? ORDER BY r.created_at DESC'
-  ).all(app.id);
+    app.screenshots = screenshots.map(s => s.toJSON());
+    app.versions = versions.map(v => v.toJSON());
+    app.reviews = reviewDocs.map(r => {
+      const obj = r.toJSON();
+      obj.username = r.user_id?.username;
+      obj.user_id = r.user_id?._id?.toString();
+      return obj;
+    });
 
-  res.json({ app });
+    res.json({ app });
+  } catch (err) { next(err); }
 });
 
 // PATCH /admin/apps/:id/review
-router.patch('/apps/:id/review', (req, res) => {
-  const { status, review_notes } = req.body;
-  if (!['approved', 'rejected', 'reviewing', 'suspended'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
-  }
+router.patch('/apps/:id/review', async (req, res, next) => {
+  try {
+    const { status, review_notes } = req.body;
+    if (!['approved', 'rejected', 'reviewing', 'suspended'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
 
-  const db = getDb();
-  const app = db.prepare('SELECT * FROM apps WHERE id = ?').get(req.params.id);
-  if (!app) return res.status(404).json({ error: 'App not found' });
+    const app = await App.findById(req.params.id);
+    if (!app) return res.status(404).json({ error: 'App not found' });
 
-  const updates = ["status = ?", "review_notes = ?", "updated_at = datetime('now')"];
-  const params = [status, review_notes || null];
+    app.status = status;
+    app.review_notes = review_notes || null;
+    if (status === 'approved' && !app.published_at) app.published_at = new Date();
+    await app.save();
 
-  if (status === 'approved') {
-    updates.push("published_at = COALESCE(published_at, datetime('now'))");
-  }
-
-  params.push(req.params.id);
-  db.prepare(`UPDATE apps SET ${updates.join(', ')} WHERE id = ?`).run(...params);
-
-  res.json({ message: `App ${status}`, app: db.prepare('SELECT * FROM apps WHERE id = ?').get(req.params.id) });
+    res.json({ message: `App ${status}`, app: app.toJSON() });
+  } catch (err) { next(err); }
 });
 
-// PATCH /admin/apps/:id/versions/:versionId/url - Update download URL (for external/large files)
-router.patch('/apps/:id/versions/:versionId/url', (req, res) => {
-  const { file_url, file_size } = req.body;
-  if (!file_url) return res.status(400).json({ error: 'file_url is required' });
+// PATCH /admin/apps/:id/versions/:versionId/url
+router.patch('/apps/:id/versions/:versionId/url', async (req, res, next) => {
+  try {
+    const { file_url, file_size } = req.body;
+    if (!file_url) return res.status(400).json({ error: 'file_url is required' });
 
-  const db = getDb();
-  const version = db.prepare('SELECT * FROM app_versions WHERE id = ? AND app_id = ?').get(req.params.versionId, req.params.id);
-  if (!version) return res.status(404).json({ error: 'Version not found' });
+    const version = await AppVersion.findOne({ _id: req.params.versionId, app_id: req.params.id });
+    if (!version) return res.status(404).json({ error: 'Version not found' });
 
-  db.prepare('UPDATE app_versions SET file_url = ?, file_size = COALESCE(?, file_size) WHERE id = ?')
-    .run(file_url, file_size ? Number(file_size) : null, req.params.versionId);
+    version.file_url = file_url;
+    if (file_size) version.file_size = Number(file_size);
+    await version.save();
 
-  res.json({ message: 'Download URL updated', version: db.prepare('SELECT * FROM app_versions WHERE id = ?').get(req.params.versionId) });
+    res.json({ message: 'Download URL updated', version: version.toJSON() });
+  } catch (err) { next(err); }
 });
 
 // PATCH /admin/apps/:id/versions/:versionId/review
-router.patch('/apps/:id/versions/:versionId/review', (req, res) => {
-  const { status, review_notes } = req.body;
-  if (!['approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
-  }
+router.patch('/apps/:id/versions/:versionId/review', async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
-  const db = getDb();
-  const result = db.prepare(
-    'UPDATE app_versions SET status = ? WHERE id = ? AND app_id = ?'
-  ).run(status, req.params.versionId, req.params.id);
-
-  if (result.changes === 0) return res.status(404).json({ error: 'Version not found' });
-  res.json({ message: `Version ${status}` });
+    const version = await AppVersion.findOneAndUpdate(
+      { _id: req.params.versionId, app_id: req.params.id },
+      { status }
+    );
+    if (!version) return res.status(404).json({ error: 'Version not found' });
+    res.json({ message: `Version ${status}` });
+  } catch (err) { next(err); }
 });
 
-// DELETE /admin/apps/:id
-router.delete('/apps/:id', (req, res) => {
-  const db = getDb();
-  const result = db.prepare("UPDATE apps SET status = 'removed', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
-
-  if (result.changes === 0) return res.status(404).json({ error: 'App not found' });
-  res.json({ message: 'App removed' });
+// DELETE /admin/apps/:id (soft delete)
+router.delete('/apps/:id', async (req, res, next) => {
+  try {
+    const app = await App.findByIdAndUpdate(req.params.id, { status: 'removed' });
+    if (!app) return res.status(404).json({ error: 'App not found' });
+    res.json({ message: 'App removed' });
+  } catch (err) { next(err); }
 });
 
 // GET /admin/developer-applications
-router.get('/developer-applications', (req, res) => {
-  const { status } = req.query;
-  const db = getDb();
+router.get('/developer-applications', async (req, res, next) => {
+  try {
+    const { status } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
 
-  let query = `SELECT da.*, u.username, u.email
-               FROM developer_applications da JOIN users u ON da.user_id = u.id WHERE 1=1`;
-  const params = [];
+    const docs = await DeveloperApplication.find(filter)
+      .sort({ created_at: -1 })
+      .populate('user_id', 'username email');
 
-  if (status) { query += ' AND da.status = ?'; params.push(status); }
+    const applications = docs.map(d => {
+      const obj = d.toJSON();
+      if (obj.user_id && typeof obj.user_id === 'object') {
+        obj.username = obj.user_id.username;
+        obj.email = obj.user_id.email;
+        obj.user_id = obj.user_id.id;
+      }
+      return obj;
+    });
 
-  query += ' ORDER BY da.created_at DESC';
-  const applications = db.prepare(query).all(...params);
-  res.json({ applications });
+    res.json({ applications });
+  } catch (err) { next(err); }
 });
 
 // PATCH /admin/developer-applications/:id/review
-router.patch('/developer-applications/:id/review', (req, res) => {
-  const { status, review_notes } = req.body;
-  if (!['approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid status' });
-  }
+router.patch('/developer-applications/:id/review', async (req, res, next) => {
+  try {
+    const { status, review_notes } = req.body;
+    if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Invalid status' });
 
-  const db = getDb();
-  const app = db.prepare('SELECT * FROM developer_applications WHERE id = ?').get(req.params.id);
-  if (!app) return res.status(404).json({ error: 'Application not found' });
+    const application = await DeveloperApplication.findById(req.params.id);
+    if (!application) return res.status(404).json({ error: 'Application not found' });
 
-  db.prepare(
-    "UPDATE developer_applications SET status = ?, reviewed_by = ?, review_notes = ?, reviewed_at = datetime('now') WHERE id = ?"
-  ).run(status, req.user.id, review_notes || null, req.params.id);
+    application.status = status;
+    application.reviewed_by = req.user.id;
+    application.review_notes = review_notes || null;
+    application.reviewed_at = new Date();
+    await application.save();
 
-  if (status === 'approved') {
-    db.prepare("UPDATE users SET role = 'developer', updated_at = datetime('now') WHERE id = ?").run(app.user_id);
-  }
+    if (status === 'approved') {
+      await User.findByIdAndUpdate(application.user_id, { role: 'developer' });
+    }
 
-  res.json({ message: `Developer application ${status}` });
+    res.json({ message: `Developer application ${status}` });
+  } catch (err) { next(err); }
 });
 
 // GET /admin/reviews
-router.get('/reviews', (req, res) => {
-  const { limit = 50, offset = 0 } = req.query;
-  const db = getDb();
+router.get('/reviews', async (req, res, next) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    const total = await Review.countDocuments();
+    const docs = await Review.find()
+      .sort({ created_at: -1 })
+      .skip(Number(offset))
+      .limit(Number(limit))
+      .populate('user_id', 'username')
+      .populate('app_id', 'name slug');
 
-  const reviews = db.prepare(
-    `SELECT r.*, u.username, a.name as app_name, a.slug as app_slug
-     FROM reviews r JOIN users u ON r.user_id = u.id JOIN apps a ON r.app_id = a.id
-     ORDER BY r.created_at DESC LIMIT ? OFFSET ?`
-  ).all(Number(limit), Number(offset));
+    const reviews = docs.map(r => {
+      const obj = r.toJSON();
+      obj.username = r.user_id?.username;
+      obj.app_name = r.app_id?.name;
+      obj.app_slug = r.app_id?.slug;
+      obj.user_id = r.user_id?._id?.toString();
+      obj.app_id = r.app_id?._id?.toString();
+      return obj;
+    });
 
-  const { total } = db.prepare('SELECT COUNT(*) as total FROM reviews').get();
-  res.json({ reviews, total });
+    res.json({ reviews, total });
+  } catch (err) { next(err); }
 });
 
 // DELETE /admin/reviews/:id
-router.delete('/reviews/:id', (req, res) => {
-  const db = getDb();
-  const review = db.prepare('SELECT * FROM reviews WHERE id = ?').get(req.params.id);
-  if (!review) return res.status(404).json({ error: 'Review not found' });
+router.delete('/reviews/:id', async (req, res, next) => {
+  try {
+    const review = await Review.findById(req.params.id);
+    if (!review) return res.status(404).json({ error: 'Review not found' });
 
-  db.prepare('DELETE FROM reviews WHERE id = ?').run(req.params.id);
+    const appId = review.app_id;
+    await Review.deleteOne({ _id: review._id });
 
-  const stats = db.prepare('SELECT AVG(rating) as avg, COUNT(*) as count FROM reviews WHERE app_id = ?').get(review.app_id);
-  db.prepare('UPDATE apps SET rating_avg = COALESCE(?, 0), rating_count = ? WHERE id = ?').run(
-    stats.avg ? Math.round(stats.avg * 10) / 10 : 0, stats.count, review.app_id
-  );
+    const [stat] = await Review.aggregate([
+      { $match: { app_id: appId } },
+      { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
+    ]);
+    await App.updateOne({ _id: appId }, {
+      rating_avg: stat ? Math.round(stat.avg * 10) / 10 : 0,
+      rating_count: stat?.count || 0,
+    });
 
-  res.json({ message: 'Review deleted' });
+    res.json({ message: 'Review deleted' });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;
