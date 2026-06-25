@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3001;
 
 const ALLOWED_ORIGINS = [
   'https://primers-store-ruddy.vercel.app',
+  'https://primers-store-liard.vercel.app',
   'http://localhost:5173',
   'http://localhost:3001',
 ];
@@ -65,7 +66,15 @@ setInterval(cleanupSessions, 60 * 60 * 1000); // hourly
 app.use(cors({
   origin: (origin, cb) => {
     // Allow no-origin requests and Electron's "null" origin (custom protocol)
-    if (!origin || origin === 'null' || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    if (!origin || origin === 'null') return cb(null, true);
+    // Allow any *.vercel.app subdomain (Vercel preview/prod URLs) or explicitly listed origins
+    const extraOrigin = process.env.CORS_ORIGIN;
+    if (
+      ALLOWED_ORIGINS.includes(origin) ||
+      (extraOrigin && origin === extraOrigin) ||
+      /^https:\/\/[a-z0-9-]+-[a-z0-9]+\.vercel\.app$/.test(origin) ||
+      /^https:\/\/primers-store[a-z0-9-]*\.vercel\.app$/.test(origin)
+    ) return cb(null, true);
     cb(new Error('CORS: origin not allowed'));
   },
   credentials: true,
