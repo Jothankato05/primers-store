@@ -17,9 +17,7 @@ export default function AIChatWidget() {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    if (open) setTimeout(() => inputRef.current?.focus(), 100);
   }, [open]);
 
   useEffect(() => {
@@ -41,7 +39,8 @@ export default function AIChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, history }),
       });
-      const data = await res.json();
+      let data;
+      try { data = await res.json(); } catch { throw new Error('AI unavailable'); }
       if (!res.ok) throw new Error(data.error || 'AI unavailable');
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply, apps: data.apps || [] }]);
     } catch {
@@ -55,7 +54,8 @@ export default function AIChatWidget() {
     <>
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-primer-600 hover:bg-primer-700 text-white rounded-full shadow-xl flex items-center justify-center transition-all duration-200 z-50 hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center transition-all duration-200 z-50 hover:scale-105 active:scale-95"
+        style={{ background: 'var(--brand)' }}
         aria-label={open ? 'Close app assistant' : 'Open app assistant'}
       >
         {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
@@ -63,17 +63,17 @@ export default function AIChatWidget() {
 
       {open && (
         <div
-          className="fixed bottom-24 right-6 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col z-50 overflow-hidden"
-          style={{ height: '440px', maxWidth: 'calc(100vw - 3rem)' }}
+          className="fixed bottom-24 right-6 w-80 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden"
+          style={{ height: 440, maxWidth: 'calc(100vw - 3rem)', background: 'var(--surface-card)', border: '1px solid var(--border)' }}
         >
           {/* Header */}
-          <div className="bg-primer-600 text-white px-4 py-3 flex items-center gap-3 shrink-0">
-            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-              <MessageCircle className="w-4 h-4" />
+          <div className="px-4 py-3 flex items-center gap-3 shrink-0" style={{ background: 'var(--brand)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}>
+              <MessageCircle className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="font-semibold text-sm leading-tight">App Assistant</p>
-              <p className="text-xs text-primer-200">Powered by AI</p>
+              <p className="font-semibold text-sm leading-tight text-white">App Assistant</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>Powered by AI</p>
             </div>
           </div>
 
@@ -82,11 +82,11 @@ export default function AIChatWidget() {
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm ${
-                    m.role === 'user'
-                      ? 'bg-primer-600 text-white rounded-br-none'
-                      : 'bg-gray-100 text-gray-800 rounded-bl-none'
-                  }`}
+                  className="max-w-[88%] rounded-2xl px-3 py-2 text-sm"
+                  style={m.role === 'user'
+                    ? { background: 'var(--brand)', color: '#fff', borderBottomRightRadius: 4 }
+                    : { background: 'var(--surface-sunken)', color: 'var(--text-body)', border: '1px solid var(--border)', borderBottomLeftRadius: 4 }
+                  }
                 >
                   <p className="whitespace-pre-wrap leading-snug">{m.content}</p>
                   {m.apps?.length > 0 && (
@@ -96,10 +96,11 @@ export default function AIChatWidget() {
                           key={app.id}
                           to={`/store/${app.slug}`}
                           onClick={() => setOpen(false)}
-                          className="flex items-center justify-between bg-white rounded-lg px-2.5 py-1.5 text-xs text-primer-700 font-medium hover:bg-primer-50 border border-primer-100 transition-colors"
+                          className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/10"
+                          style={{ background: 'rgba(92,124,250,0.15)', color: 'var(--brand-text)', border: '1px solid rgba(92,124,250,0.25)' }}
                         >
                           <span>{app.name}</span>
-                          <span className="text-primer-400">→</span>
+                          <span style={{ color: 'var(--brand-text)' }}>→</span>
                         </Link>
                       ))}
                     </div>
@@ -110,8 +111,8 @@ export default function AIChatWidget() {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl rounded-bl-none px-3 py-2.5">
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                <div className="rounded-2xl px-3 py-2.5" style={{ background: 'var(--surface-sunken)', border: '1px solid var(--border)' }}>
+                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--text-muted)' }} />
                 </div>
               </div>
             )}
@@ -119,7 +120,7 @@ export default function AIChatWidget() {
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t border-gray-100 shrink-0">
+          <div className="p-3 shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
             <div className="flex gap-2">
               <input
                 ref={inputRef}
@@ -128,14 +129,15 @@ export default function AIChatWidget() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
                 placeholder="What kind of app do you need?"
-                className="flex-1 text-sm px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primer-300 focus:border-transparent"
+                className="input-field flex-1 text-sm"
                 maxLength={500}
                 disabled={loading}
               />
               <button
                 onClick={send}
                 disabled={loading || !input.trim()}
-                className="p-2 bg-primer-600 hover:bg-primer-700 disabled:opacity-40 text-white rounded-xl transition-colors shrink-0"
+                className="p-2 text-white rounded-xl transition-colors shrink-0 disabled:opacity-40"
+                style={{ background: 'var(--brand)' }}
               >
                 <Send className="w-4 h-4" />
               </button>
