@@ -18,13 +18,13 @@ export default function StarRating({ rating = 0, count = 0, size = 'sm', interac
             className={`${starSize} ${
               s <= Math.round(rating)
                 ? 'text-yellow-400 fill-yellow-400'
-                : 'text-gray-300'
+                : 'text-white/20'
             }`}
           />
         </button>
       ))}
       {count > 0 && (
-        <span className="ml-1.5 text-sm text-gray-500">({count.toLocaleString()})</span>
+        <span className="ml-1.5 text-sm" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>({count.toLocaleString()})</span>
       )}
     </div>
   );

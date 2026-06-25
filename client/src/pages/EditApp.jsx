@@ -356,13 +356,13 @@ export default function EditApp() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium">App File *</label>
-                <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs">
+                <div className="flex rounded-lg overflow-hidden text-xs" style={{ border: '1px solid var(--border)' }}>
                   <button type="button" onClick={() => setVersionUseExternalUrl(false)}
-                    className={`px-3 py-1 font-medium transition-colors ${!versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1 font-medium transition-colors ${!versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
                     Upload
                   </button>
                   <button type="button" onClick={() => setVersionUseExternalUrl(true)}
-                    className={`px-3 py-1 font-medium transition-colors ${versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1 font-medium transition-colors ${versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
                     External URL
                   </button>
                 </div>
