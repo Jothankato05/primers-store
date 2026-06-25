@@ -15,7 +15,12 @@ async function apiRequest(path, options = {}) {
   try {
     const res = await fetch(`${API}${path}`, { ...options, headers, signal: controller.signal });
     clearTimeout(timeout);
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error(res.ok ? 'Unexpected server response' : `Server error (${res.status})`);
+    }
     if (!res.ok) throw new Error(data.error || 'Request failed');
     return data;
   } catch (err) {
