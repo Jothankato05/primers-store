@@ -33,9 +33,22 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0" style={noDrag}>
-            <img src="/primers-logo.svg" alt="Primers" style={{ height: 32 }} onError={e => { e.target.style.display='none'; }} />
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', background: 'var(--gradient-brand)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Primers</span>
+          <Link to="/" className="flex items-center gap-2 shrink-0" style={{ textDecoration: 'none', ...noDrag }}>
+            {/* P mark */}
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#748ffc" />
+                  <stop offset="100%" stopColor="#a855f7" />
+                </linearGradient>
+              </defs>
+              <rect width="32" height="32" rx="8" fill="url(#logoGrad)" />
+              <text x="8" y="24" fontFamily="Quicksand, Manrope, sans-serif" fontWeight="700" fontSize="20" fill="white">P</text>
+            </svg>
+            {/* Wordmark */}
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.125rem', letterSpacing: '-0.01em', background: 'var(--gradient-brand)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              Primers
+            </span>
           </Link>
 
           {/* Search */}
