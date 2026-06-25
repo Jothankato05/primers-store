@@ -10,12 +10,12 @@
 
 | What | URL |
 |------|-----|
-| 🖥️ Production frontend | `https://primers-store-ruddy.vercel.app` |
-| 🔙 Backend API | `https://primers-store.onrender.com` |
-| 📦 GitHub repo | `https://github.com/Jothankato05/primers-store` |
-| 🚀 Presona release | `https://github.com/Jothankato05/primers-store/releases/tag/v1.0.0` |
-| 🖥️ Vercel dashboard | `https://vercel.com/dashboard` → primers-store |
-| 🔙 Render dashboard | `https://dashboard.render.com` → primers-store |
+|  Production frontend | `https://primers-store-ruddy.vercel.app` |
+|  Backend API | `https://primers-store.onrender.com` |
+|  GitHub repo | `https://github.com/Jothankato05/primers-store` |
+|  Presona release | `https://github.com/Jothankato05/primers-store/releases/tag/v1.0.0` |
+|  Vercel dashboard | `https://vercel.com/dashboard` → primers-store |
+|  Render dashboard | `https://dashboard.render.com` → primers-store |
 
 ## Demo Accounts
 
@@ -59,9 +59,9 @@ These auto-seed on first run (server/index.js `autoSeed()` function).
 │  - Developer application system                     │
 │  - Auto-seed on first run (users + Presona app)     │
 │                                                     │
-│  ⚠️ Free tier: sleeps after 15min inactivity        │
-│  ⚠️ Keep-alive cron pings /api/health every 10min   │
-│  ⚠️ Needs persistent disk for SQLite (1GB)          │
+│   Free tier: sleeps after 15min inactivity        │
+│   Keep-alive cron pings /api/health every 10min   │
+│   Needs persistent disk for SQLite (1GB)          │
 └─────────────────────────────────────────────────────┘
 ```
 

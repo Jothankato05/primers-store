@@ -1,23 +1,23 @@
-# 🏪 Primers Store
+#  Primers Store
 
 A full-featured app store platform built from scratch — upload, verify, and distribute applications. Think Microsoft Store, but Primers-branded.
 
 ## Features
 
-### 🛍️ Storefront
+###  Storefront
 - Browse apps by category, search, and sort (downloads, rating, newest)
 - App detail pages with screenshots, description, reviews
 - Download tracking and version management
 - Star ratings and user reviews with helpful votes
 
-### 👨‍💻 Developer Portal
+### ‍ Developer Portal
 - Apply to become a developer
 - Submit new apps with metadata, icons, banners, screenshots
 - Upload app files (Windows, macOS, Linux, Android, iOS, Web)
 - Manage versions and changelogs
 - Track downloads and ratings
 
-### 🛡️ Admin Panel
+###  Admin Panel
 - Comprehensive dashboard with stats
 - App review workflow: pending → reviewing → approved/rejected
 - Developer application review and approval
@@ -25,7 +25,7 @@ A full-featured app store platform built from scratch — upload, verify, and di
 - Review moderation
 - Version approval system
 
-### 🔐 Authentication
+###  Authentication
 - JWT-based auth with session management
 - User roles: user, developer, admin
 - Email verification system
