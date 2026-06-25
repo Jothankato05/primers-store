@@ -60,12 +60,12 @@ export default function Dashboard() {
         {/* Profile */}
         <div className="card p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-primer-100 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-primer-600/20 rounded-full flex items-center justify-center">
               <User className="w-6 h-6 text-primer-600" />
             </div>
             <div>
               <h2 className="font-semibold">{user?.display_name || user?.username}</h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-primer-100 text-primer-700 capitalize">{user?.role}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primer-600/20 text-primer-400 capitalize">{user?.role}</span>
             </div>
           </div>
           <form onSubmit={saveProfile} className="space-y-3">
@@ -92,7 +92,7 @@ export default function Dashboard() {
         {/* Quick Links */}
         <div className="card p-6 space-y-3">
           <h3 className="font-semibold text-lg mb-2">Quick Links</h3>
-          <Link to="/store" className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+          <Link to="/store" className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
             <div className="flex items-center gap-3">
               <Download className="w-5 h-5 text-gray-400" />
               <span className="text-sm">Browse Store</span>
@@ -100,7 +100,7 @@ export default function Dashboard() {
             <ChevronRight className="w-4 h-4 text-gray-400" />
           </Link>
           {isDeveloper && (
-            <Link to="/developer" className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+            <Link to="/developer" className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
               <div className="flex items-center gap-3">
                 <Package className="w-5 h-5 text-gray-400" />
                 <span className="text-sm">Developer Console</span>
@@ -109,7 +109,7 @@ export default function Dashboard() {
             </Link>
           )}
           {isAdmin && (
-            <Link to="/admin" className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+            <Link to="/admin" className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
               <div className="flex items-center gap-3">
                 <Shield className="w-5 h-5 text-gray-400" />
                 <span className="text-sm">Admin Panel</span>
@@ -118,7 +118,7 @@ export default function Dashboard() {
             </Link>
           )}
           {!isDeveloper && user?.role === 'user' && !showDevApply && (
-            <button onClick={() => setShowDevApply(true)} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors w-full">
+            <button onClick={() => setShowDevApply(true)} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors w-full">
               <div className="flex items-center gap-3">
                 <Edit3 className="w-5 h-5 text-gray-400" />
                 <span className="text-sm">Become a Developer</span>

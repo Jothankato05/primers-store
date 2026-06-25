@@ -128,7 +128,7 @@ export default function AdminDashboard() {
     <>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <h1 className="text-3xl font-bold mb-2">Admin Panel</h1>
-      <p className="text-gray-600 mb-8">Manage apps, users, and review submissions</p>
+      <p className="mb-8" style={{ color: 'var(--text-muted)' }}>Manage apps, users, and review submissions</p>
 
       <div className="flex flex-wrap gap-2 mb-8">
         {tabs.map(t => (
@@ -136,13 +136,13 @@ export default function AdminDashboard() {
             key={t.id}
             onClick={() => { setTab(t.id); if (t.id === 'reviews') loadReviews(); if (t.id === 'developers') loadDevApplications(); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === t.id ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+              tab === t.id ? 'bg-primer-600 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10'
             }`}
           >
             <t.icon className="w-4 h-4" /> {t.label}
             {t.badge > 0 && (
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                tab === t.id ? 'bg-white text-primer-600' : 'bg-red-500 text-white'
+                tab === t.id ? 'bg-white/20 text-white' : 'bg-red-500 text-white'
               }`}>{t.badge}</span>
             )}
           </button>
@@ -152,21 +152,21 @@ export default function AdminDashboard() {
       {tab === 'overview' && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Total Users', value: stats.total_users, icon: Users, color: 'bg-blue-50 text-blue-600' },
-            { label: 'Total Apps', value: stats.total_apps, icon: Package, color: 'bg-purple-50 text-purple-600' },
-            { label: 'Pending Review', value: stats.pending_apps, icon: Clock, color: 'bg-yellow-50 text-yellow-600' },
-            { label: 'Downloads', value: stats.total_downloads?.toLocaleString() || '0', icon: Download, color: 'bg-green-50 text-green-600' },
-            { label: 'Approved Apps', value: stats.approved_apps, icon: CheckCircle, color: 'bg-green-50 text-green-600' },
-            { label: 'Reviews', value: stats.total_reviews, icon: Star, color: 'bg-orange-50 text-orange-600' },
-            { label: 'Pending Devs', value: stats.pending_developers, icon: UserCheck, color: 'bg-pink-50 text-pink-600' },
-            { label: 'Pending Versions', value: stats.pending_versions, icon: Clock, color: 'bg-cyan-50 text-cyan-600' },
+            { label: 'Total Users', value: stats.total_users, icon: Users, color: 'bg-blue-500/10 text-blue-400' },
+            { label: 'Total Apps', value: stats.total_apps, icon: Package, color: 'bg-violet-500/10 text-violet-400' },
+            { label: 'Pending Review', value: stats.pending_apps, icon: Clock, color: 'bg-yellow-500/10 text-yellow-400' },
+            { label: 'Downloads', value: stats.total_downloads?.toLocaleString() || '0', icon: Download, color: 'bg-green-500/10 text-green-400' },
+            { label: 'Approved Apps', value: stats.approved_apps, icon: CheckCircle, color: 'bg-green-500/10 text-green-400' },
+            { label: 'Reviews', value: stats.total_reviews, icon: Star, color: 'bg-orange-500/10 text-orange-400' },
+            { label: 'Pending Devs', value: stats.pending_developers, icon: UserCheck, color: 'bg-pink-500/10 text-pink-400' },
+            { label: 'Pending Versions', value: stats.pending_versions, icon: Clock, color: 'bg-cyan-500/10 text-cyan-400' },
           ].map((s, i) => (
             <div key={i} className={`${s.color.split(' ')[0]} rounded-xl p-5`}>
               <div className="flex items-center gap-3">
                 <s.icon className={`w-8 h-8 ${s.color.split(' ')[1]}`} />
                 <div>
                   <p className="text-2xl font-bold">{s.value}</p>
-                  <p className="text-sm text-gray-600">{s.label}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
                 </div>
               </div>
             </div>
@@ -268,27 +268,27 @@ export default function AdminDashboard() {
           </div>
           <div className="card overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead style={{ background: 'var(--surface-sunken)', borderBottom: '1px solid var(--border)' }}>
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">User</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Role</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Verified</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Joined</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>User</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>Role</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>Verified</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>Joined</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium uppercase" style={{ color: 'var(--text-muted)' }}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody style={{ borderTop: '1px solid var(--border)' }}>
                 {users.map(u => (
-                  <tr key={u.id} className="hover:bg-gray-50">
+                  <tr key={u.id} className="hover:bg-white/5" style={{ borderBottom: '1px solid var(--border)' }}>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-sm">{u.display_name || u.username}</p>
-                      <p className="text-xs text-gray-500">{u.email}</p>
+                      <p className="font-medium text-sm" style={{ color: 'var(--text-strong)' }}>{u.display_name || u.username}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
                     </td>
                     <td className="px-4 py-3">
                       <select
                         value={u.role}
                         onChange={e => updateUserRole(u.id, e.target.value)}
-                        className="text-xs border border-gray-200 rounded px-2 py-1"
+                        className="text-xs rounded px-2 py-1 input-field"
                       >
                         <option value="user">User</option>
                         <option value="developer">Developer</option>
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
                         <XCircle className="w-4 h-4 text-red-400" />
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{new Date(u.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{new Date(u.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-right">
                       {!u.email_verified && (
                         <button
@@ -389,23 +389,23 @@ export default function AdminDashboard() {
 
     {appDetail && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setAppDetail(null)}>
-        <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-          <div className="p-6 border-b border-gray-200 flex items-start justify-between">
+        <div className="glass-card rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" style={{ background: 'var(--surface-card)' }} onClick={e => e.stopPropagation()}>
+          <div className="p-6 flex items-start justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
             <div>
-              <h2 className="text-xl font-bold">{appDetail.name}</h2>
-              <p className="text-sm text-gray-500">by {appDetail.developer_name} • {appDetail.category}</p>
+              <h2 className="text-xl font-bold" style={{ color: 'var(--text-strong)' }}>{appDetail.name}</h2>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>by {appDetail.developer_name} • {appDetail.category}</p>
             </div>
-            <button onClick={() => setAppDetail(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            <button onClick={() => setAppDetail(null)} className="text-2xl leading-none hover:text-white transition-colors" style={{ color: 'var(--text-muted)' }}>&times;</button>
           </div>
           <div className="p-6 space-y-6">
             <div>
               <h3 className="font-semibold mb-3 flex items-center gap-2"><LinkIcon className="w-4 h-4" /> Versions &amp; Download URLs</h3>
               {(!appDetail.versions || appDetail.versions.length === 0) ? (
-                <p className="text-sm text-gray-500">No versions</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No versions</p>
               ) : (
                 <div className="space-y-3">
                   {appDetail.versions.map(v => (
-                    <div key={v.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
+                    <div key={v.id} className="rounded-lg p-4 space-y-2" style={{ border: '1px solid var(--border)', background: 'var(--surface-sunken)' }}>
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-sm">v{v.version} — {v.platform}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

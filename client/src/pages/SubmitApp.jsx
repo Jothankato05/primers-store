@@ -280,13 +280,13 @@ export default function SubmitApp() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-sm font-medium">App File *</label>
-              <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs">
+              <div className="flex rounded-lg overflow-hidden text-xs" style={{ border: '1px solid var(--border)' }}>
                 <button type="button" onClick={() => setUseExternalUrl(false)}
-                  className={`px-3 py-1 font-medium transition-colors ${!useExternalUrl ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                  className={`px-3 py-1 font-medium transition-colors ${!useExternalUrl ? 'bg-primer-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
                   Upload File
                 </button>
                 <button type="button" onClick={() => setUseExternalUrl(true)}
-                  className={`px-3 py-1 font-medium transition-colors ${useExternalUrl ? 'bg-primer-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                  className={`px-3 py-1 font-medium transition-colors ${useExternalUrl ? 'bg-primer-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
                   External URL
                 </button>
               </div>
