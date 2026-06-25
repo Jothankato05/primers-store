@@ -1,11 +1,11 @@
-const { getDb, verifyPassword } = require('../database');
+const { Session } = require('../database');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'primers-store-secret-key-change-in-production';
 if (!process.env.JWT_SECRET) console.warn('⚠️  JWT_SECRET not set — using insecure default. Set JWT_SECRET in production.');
 const JWT_EXPIRY = '7d';
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     req.user = null;
@@ -14,24 +14,22 @@ function authMiddleware(req, res, next) {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const db = getDb();
-    const session = db.prepare(
-      'SELECT s.*, u.id as uid, u.username, u.email, u.display_name, u.role, u.email_verified FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ? AND s.expires_at > datetime("now")'
-    ).get(token);
+    jwt.verify(token, JWT_SECRET);
+    const session = await Session.findOne({ token, expires_at: { $gt: new Date() } }).populate('user_id');
 
-    if (!session) {
+    if (!session || !session.user_id) {
       req.user = null;
       return next();
     }
 
+    const u = session.user_id;
     req.user = {
-      id: session.uid,
-      username: session.username,
-      email: session.email,
-      display_name: session.display_name,
-      role: session.role,
-      email_verified: session.email_verified,
+      id: u._id.toString(),
+      username: u.username,
+      email: u.email,
+      display_name: u.display_name,
+      role: u.role,
+      email_verified: u.email_verified,
     };
     req.sessionToken = token;
   } catch {
@@ -41,16 +39,12 @@ function authMiddleware(req, res, next) {
 }
 
 function requireAuth(req, res, next) {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
+  if (!req.user) return res.status(401).json({ error: 'Authentication required' });
   next();
 }
 
 function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
+  if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
   next();
 }
 

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth, requireDeveloper } = require('../middleware/auth');
-const { getDb } = require('../database');
+const { App } = require('../database');
 
 const GATEWAY_URL = process.env.VERCEL_AI_GATEWAY_URL;
 const GATEWAY_KEY = process.env.VERCEL_AI_GATEWAY_KEY;
@@ -32,7 +32,7 @@ async function callAI(messages, opts = {}) {
   return data.choices[0].message.content;
 }
 
-// AI-powered app discovery chat — public
+// POST /api/ai/chat — public app discovery assistant
 router.post('/chat', async (req, res) => {
   try {
     const { message, history = [] } = req.body;
@@ -40,15 +40,13 @@ router.post('/chat', async (req, res) => {
       return res.status(400).json({ error: 'message required (max 500 chars)' });
     }
 
-    const db = getDb();
-    const apps = db.prepare(`
-      SELECT id, name, slug, short_description, category, downloads_count, rating_avg
-      FROM apps WHERE status = 'approved'
-      ORDER BY downloads_count DESC LIMIT 60
-    `).all();
+    const apps = await App.find({ status: 'approved' }, 'id name slug short_description category downloads_count rating_avg')
+      .sort({ downloads_count: -1 })
+      .limit(60)
+      .lean();
 
     const appList = apps.map(a =>
-      `[${a.id}] ${a.name} (${a.category}) — ${a.short_description || 'No description'}`
+      `[${a._id}] ${a.name} (${a.category}) — ${a.short_description || 'No description'}`
     ).join('\n');
 
     const systemPrompt = `You are a helpful app discovery assistant for Primers Store, a curated app store.
@@ -73,7 +71,12 @@ Rules:
       { role: 'user', content: message.trim() },
     ], { max_tokens: 300, temperature: 0.6 });
 
-    const mentioned = apps.filter(a => reply.includes(a.name));
+    const mentioned = apps.filter(a => reply.includes(a.name)).map(a => ({
+      id: a._id.toString(),
+      name: a.name,
+      slug: a.slug,
+    }));
+
     res.json({ reply, apps: mentioned });
   } catch (e) {
     console.error('[AI /chat]', e.message);
@@ -81,7 +84,7 @@ Rules:
   }
 });
 
-// Generate a short description from app info — developers only
+// POST /api/ai/generate-description — developers only
 router.post('/generate-description', requireAuth, requireDeveloper, async (req, res) => {
   try {
     const { name, category, description } = req.body;
@@ -108,13 +111,11 @@ router.post('/generate-description', requireAuth, requireDeveloper, async (req, 
   }
 });
 
-// Content moderation check — developers only
+// POST /api/ai/moderate — developers only
 router.post('/moderate', requireAuth, requireDeveloper, async (req, res) => {
   try {
     const { name, description, category } = req.body;
-    if (!name || !description) {
-      return res.status(400).json({ error: 'name and description required' });
-    }
+    if (!name || !description) return res.status(400).json({ error: 'name and description required' });
 
     const reply = await callAI([
       {
@@ -138,7 +139,6 @@ router.post('/moderate', requireAuth, requireDeveloper, async (req, res) => {
     res.json(parsed);
   } catch (e) {
     console.error('[AI /moderate]', e.message);
-    // Fail open — don't block submission if AI is unavailable
     res.json({ approved: true, reason: '' });
   }
 });
