@@ -35,7 +35,7 @@ jobs:
         working-directory: client
         run: npm run build
         env:
-          VITE_API_URL: https://primers-store.onrender.com/api
+          VITE_API_URL: https://primers-api-production.up.railway.app/api
 
       # 2. Package Electron app into .exe
       - name: Install launcher dependencies

@@ -2,12 +2,26 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/primers_store';
+if (!process.env.MONGODB_URI) {
+  console.warn('⚠️  MONGODB_URI not set — falling back to mongodb://localhost:27017/primers_store. Set MONGODB_URI in production.');
+}
 
 async function connectDb() {
   if (mongoose.connection.readyState === 0) {
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
     console.log('✅ MongoDB connected');
+    // Surface index-build failures (e.g. duplicate data vs a unique index) instead
+    // of letting uniqueness silently go unenforced
+    await Promise.all(
+      Object.values(mongoose.models).map(m =>
+        m.init().catch(e => console.error(`⚠️  Index build failed for ${m.modelName}:`, e.message))
+      )
+    );
   }
+}
+
+function dbState() {
+  return ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown';
 }
 
 const toJSON = {
@@ -58,6 +72,9 @@ const AppSchema = new mongoose.Schema({
   published_at: Date,
 }, { ...ts(), toJSON });
 
+AppSchema.index({ status: 1, category: 1 });
+AppSchema.index({ developer_id: 1 });
+
 const AppVersionSchema = new mongoose.Schema({
   app_id: { type: mongoose.Schema.Types.ObjectId, ref: 'App', required: true },
   version: { type: String, required: true },
@@ -70,6 +87,8 @@ const AppVersionSchema = new mongoose.Schema({
   status: { type: String, default: 'pending', enum: ['pending', 'approved', 'rejected'] },
   downloads_count: { type: Number, default: 0 },
 }, { ...ts(false), toJSON });
+
+AppVersionSchema.index({ app_id: 1, status: 1 });
 
 const AppScreenshotSchema = new mongoose.Schema({
   app_id: { type: mongoose.Schema.Types.ObjectId, ref: 'App', required: true },
@@ -142,6 +161,19 @@ const DeveloperApplication = mongoose.model('DeveloperApplication', DeveloperApp
 const Session = mongoose.model('Session', SessionSchema);
 const AppInstallation = mongoose.model('AppInstallation', AppInstallationSchema);
 
+// Recompute an app's rating_avg/rating_count. Uses $sum on the rating field plus a
+// countDocuments call (avoids $avg / $sum:1, which some MongoDB-compatible servers lack).
+async function recalcAppRating(appId) {
+  const [stat] = await Review.aggregate([
+    { $match: { app_id: appId } },
+    { $group: { _id: null, total: { $sum: '$rating' } } },
+  ]);
+  const count = await Review.countDocuments({ app_id: appId });
+  const avg = count ? Math.round((stat.total / count) * 10) / 10 : 0;
+  await App.updateOne({ _id: appId }, { rating_avg: avg, rating_count: count });
+  return { avg, count };
+}
+
 function generateToken(length = 64) {
   return crypto.randomBytes(length).toString('hex');
 }
@@ -159,7 +191,7 @@ function verifyPassword(password, stored) {
 }
 
 module.exports = {
-  connectDb, generateToken, hashPassword, verifyPassword,
+  connectDb, dbState, generateToken, hashPassword, verifyPassword, recalcAppRating,
   User, App, AppVersion, AppScreenshot, Review, ReviewVote,
   Download, DeveloperApplication, Session, AppInstallation,
 };

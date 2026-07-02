@@ -4,3 +4,6 @@ server/uploads/
 client/dist/
 .env
 .claude/worktrees/
+*.db-shm
+*.db-wal
+state.json

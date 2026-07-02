@@ -1,5 +1,6 @@
 const { Session } = require('../database');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'primers-store-secret-key-change-in-production';
 if (!process.env.JWT_SECRET) console.warn('⚠️  JWT_SECRET not set — using insecure default. Set JWT_SECRET in production.');
@@ -13,8 +14,17 @@ async function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.split(' ')[1];
+
+  // A bad/expired token means "anonymous", but a database failure must surface
+  // as a 5xx — otherwise a transient outage would masquerade as a logout.
   try {
     jwt.verify(token, JWT_SECRET);
+  } catch {
+    req.user = null;
+    return next();
+  }
+
+  try {
     const session = await Session.findOne({ token, expires_at: { $gt: new Date() } }).populate('user_id');
 
     if (!session || !session.user_id) {
@@ -32,10 +42,10 @@ async function authMiddleware(req, res, next) {
       email_verified: u.email_verified,
     };
     req.sessionToken = token;
-  } catch {
-    req.user = null;
+    next();
+  } catch (err) {
+    next(err);
   }
-  next();
 }
 
 function requireAuth(req, res, next) {
@@ -56,7 +66,9 @@ function requireDeveloper(req, res, next) {
 }
 
 function signToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+  // jti makes every token unique — two logins in the same second would otherwise
+  // produce identical JWTs and collide with the sessions.token unique index
+  return jwt.sign({ userId, jti: crypto.randomBytes(8).toString('hex') }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
 }
 
 module.exports = { authMiddleware, requireAuth, requireAdmin, requireDeveloper, signToken, JWT_SECRET, JWT_EXPIRY };

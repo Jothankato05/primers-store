@@ -5,11 +5,12 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const mongoose = require('mongoose');
-const { App, AppVersion, AppScreenshot, Review, ReviewVote, Download, AppInstallation } = require('../database');
+const { App, AppVersion, AppScreenshot, Review, ReviewVote, Download, AppInstallation, recalcAppRating } = require('../database');
 const { requireAuth, requireDeveloper } = require('../middleware/auth');
 
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 
+// Configure multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const subDir = file.fieldname === 'icon' ? 'icons' :
@@ -28,7 +29,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 500 * 1024 * 1024 },
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max for app files
   fileFilter: (req, file, cb) => {
     const allowedImages = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (file.fieldname === 'app_file') return cb(null, true);
@@ -40,15 +41,21 @@ const upload = multer({
   },
 });
 
+// Slugs that collide with static /apps/* routes and would make the app unreachable
+const RESERVED_SLUGS = new Set(['categories', 'developer']);
+
+// Slugify — normalize Unicode, strip diacritics, fall back to timestamp for all-non-ASCII names
 function slugify(text) {
   const slug = text.toLowerCase()
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return slug || `app-${Date.now()}`;
+  if (!slug || RESERVED_SLUGS.has(slug)) return `${slug || 'app'}-${Date.now()}`;
+  return slug;
 }
 
+// Validate that a URL uses http or https (blocks file://, javascript:, etc.)
 function isValidHttpUrl(str) {
   try {
     const u = new URL(str);
@@ -56,6 +63,7 @@ function isValidHttpUrl(str) {
   } catch { return false; }
 }
 
+// Delete a local upload file if it's under /uploads/ — path traversal safe
 function deleteUploadFile(urlPath) {
   if (!urlPath || !urlPath.startsWith('/uploads/')) return;
   const filePath = path.resolve(UPLOADS_DIR, urlPath.replace(/^\/uploads\//, ''));
@@ -63,6 +71,17 @@ function deleteUploadFile(urlPath) {
   try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
 }
 
+// Remove already-saved multer files when a request fails validation afterwards
+function discardUploadedFiles(files) {
+  if (!files) return;
+  for (const list of Object.values(files)) {
+    for (const f of list) {
+      try { fs.unlinkSync(f.path); } catch {}
+    }
+  }
+}
+
+// Stream-based SHA256 — avoids loading large files into memory
 function streamHash(filePath) {
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash('sha256');
@@ -77,40 +96,57 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function flattenApp(doc, devFields = {}) {
+// Coerce a query param to a bounded integer (NaN-safe — ?limit=abc must not crash the driver)
+function toInt(value, fallback, max) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return max ? Math.min(n, max) : n;
+}
+
+const isObjectId = (v) => typeof v === 'string' && /^[a-f0-9]{24}$/i.test(v);
+
+// Flatten a populated developer_id into developer_* fields
+function flattenApp(doc) {
   const obj = doc.toJSON();
-  // If developer_id is populated, extract useful fields then reduce to ID
   if (obj.developer_id && typeof obj.developer_id === 'object') {
     obj.developer_name = obj.developer_id.username;
     obj.developer_display = obj.developer_id.display_name;
     obj.developer_email = obj.developer_id.email;
     obj.developer_id = obj.developer_id.id;
   }
-  Object.assign(obj, devFields);
   return obj;
 }
 
-async function recalcRating(appId) {
-  const [stat] = await Review.aggregate([
-    { $match: { app_id: appId } },
-    { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
-  ]);
-  const avg = stat ? Math.round(stat.avg * 10) / 10 : 0;
-  const count = stat?.count || 0;
-  await App.updateOne({ _id: appId }, { rating_avg: avg, rating_count: count });
-  return { avg, count };
+// Attach latest approved version to each app in a list (single query)
+async function attachLatestVersions(apps) {
+  if (!apps.length) return apps;
+  const ids = apps.map(a => new mongoose.Types.ObjectId(a.id));
+  const versions = await AppVersion.find({ app_id: { $in: ids }, status: 'approved' }).sort({ created_at: -1 });
+  const latestByApp = new Map();
+  for (const v of versions) {
+    const key = v.app_id.toString();
+    if (!latestByApp.has(key)) latestByApp.set(key, v.toJSON());
+  }
+  for (const a of apps) a.latest_version = latestByApp.get(a.id) || null;
+  return apps;
 }
 
 // GET /apps - Public store listing
 router.get('/', async (req, res, next) => {
   try {
-    const { category, search, sort, limit = 20, offset = 0, developer_id } = req.query;
+    const { category, search, sort, developer_id } = req.query;
     if (search && search.length > 200) return res.status(400).json({ error: 'Search query too long' });
 
+    const limit = toInt(req.query.limit, 20, 100);
+    const offset = toInt(req.query.offset, 0);
+
     const filter = { status: 'approved' };
-    if (category) filter.category = category;
-    if (developer_id) filter.developer_id = developer_id;
-    if (search) {
+    if (category && typeof category === 'string') filter.category = category;
+    if (developer_id) {
+      if (!isObjectId(developer_id)) return res.json({ apps: [], total: 0, limit, offset });
+      filter.developer_id = developer_id;
+    }
+    if (search && typeof search === 'string') {
       const re = new RegExp(escapeRegex(search), 'i');
       filter.$or = [{ name: re }, { description: re }, { short_description: re }];
     }
@@ -128,16 +164,16 @@ router.get('/', async (req, res, next) => {
 
     const docs = await App.find(filter)
       .sort(sortObj)
-      .skip(Number(offset))
-      .limit(Number(limit))
+      .skip(offset)
+      .limit(limit)
       .populate('developer_id', 'username display_name');
 
-    const apps = docs.map(d => flattenApp(d));
-    res.json({ apps, total, limit: Number(limit), offset: Number(offset) });
+    const apps = await attachLatestVersions(docs.map(flattenApp));
+    res.json({ apps, total, limit, offset });
   } catch (err) { next(err); }
 });
 
-// GET /apps/categories
+// GET /apps/categories - List categories
 router.get('/categories', async (req, res, next) => {
   try {
     const agg = await App.aggregate([
@@ -150,11 +186,11 @@ router.get('/categories', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /apps/developer/mine - must be before /:slug
+// GET /apps/developer/mine - Developer's apps (must be registered before /:slug)
 router.get('/developer/mine', requireAuth, requireDeveloper, async (req, res, next) => {
   try {
     const docs = await App.find({ developer_id: req.user.id }).sort({ updated_at: -1 });
-    const apps = docs.map(d => d.toJSON());
+    const apps = await attachLatestVersions(docs.map(d => d.toJSON()));
     res.json({ apps });
   } catch (err) { next(err); }
 });
@@ -168,6 +204,7 @@ router.get('/:slug', async (req, res, next) => {
 
     const app = flattenApp(doc);
 
+    // Override Presona display info
     if (req.params.slug === 'presona') {
       app.developer_display = 'Primers Group';
       app.short_description = 'Your personal AI agent. Fully offline. Knows your work. Powered by PrimersGPT.';
@@ -179,6 +216,7 @@ router.get('/:slug', async (req, res, next) => {
     const latestVer = await AppVersion.findOne({ app_id: doc._id, status: 'approved' }).sort({ created_at: -1 });
     app.latest_version = latestVer ? latestVer.toJSON() : null;
 
+    // Override Presona download URL to Internet Archive
     if (req.params.slug === 'presona' && app.latest_version) {
       app.latest_version.file_url = 'https://archive.org/download/presona-installer/Presona-Installer.exe';
     }
@@ -207,7 +245,7 @@ router.get('/:slug', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /apps - Create new app
+// POST /apps - Create new app (developer only)
 router.post('/', requireAuth, requireDeveloper, upload.fields([
   { name: 'icon', maxCount: 1 },
   { name: 'banner', maxCount: 1 },
@@ -217,11 +255,16 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
   try {
     const { name, description, short_description, category, website, support_email, privacy_url, version, changelog, platform, min_os_version, external_file_url, external_file_size } = req.body;
 
-    if (!name || !description || !category) return res.status(400).json({ error: 'Name, description, and category are required' });
-    if (name.length < 2 || name.length > 200) return res.status(400).json({ error: 'App name must be 2–200 characters' });
-    if (description.length > 50000) return res.status(400).json({ error: 'Description must be under 50,000 characters' });
-    if (external_file_url && !isValidHttpUrl(external_file_url)) return res.status(400).json({ error: 'external_file_url must be a valid http or https URL' });
-    if (version && !/^[a-zA-Z0-9.\-_+]{1,50}$/.test(version)) return res.status(400).json({ error: 'Version format is invalid' });
+    const fail = (code, error) => { discardUploadedFiles(req.files); return res.status(code).json({ error }); };
+
+    if (!name || !description || !category) return fail(400, 'Name, description, and category are required');
+    if (name.length < 2 || name.length > 200) return fail(400, 'App name must be 2–200 characters');
+    if (description.length > 50000) return fail(400, 'Description must be under 50,000 characters');
+    if (external_file_url && !isValidHttpUrl(external_file_url)) return fail(400, 'external_file_url must be a valid http or https URL');
+    if (external_file_size !== undefined && external_file_size !== '' && !Number.isFinite(Number(external_file_size))) {
+      return fail(400, 'external_file_size must be a number');
+    }
+    if (version && !/^[a-zA-Z0-9.\-_+]{1,50}$/.test(version)) return fail(400, 'Version format is invalid');
 
     const baseSlug = slugify(name);
     const slugConflict = await App.findOne({ slug: baseSlug });
@@ -281,7 +324,7 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
   } catch (err) { next(err); }
 });
 
-// PATCH /apps/:id - Update app
+// PATCH /apps/:id - Update app (developer, own apps only)
 router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
   { name: 'icon', maxCount: 1 },
   { name: 'banner', maxCount: 1 },
@@ -289,7 +332,10 @@ router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
 ]), async (req, res, next) => {
   try {
     const app = await App.findOne({ _id: req.params.id, developer_id: req.user.id });
-    if (!app) return res.status(404).json({ error: 'App not found or access denied' });
+    if (!app) {
+      discardUploadedFiles(req.files);
+      return res.status(404).json({ error: 'App not found or access denied' });
+    }
 
     const { name, description, short_description, category, website, support_email, privacy_url } = req.body;
     const updates = { status: 'pending' };
@@ -316,7 +362,7 @@ router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
       updates.banner_url = `/uploads/banners/${req.files.banner[0].filename}`;
     }
 
-    const updated = await App.findByIdAndUpdate(app._id, { $set: updates }, { new: true });
+    await App.updateOne({ _id: app._id }, { $set: updates });
 
     if (req.files?.screenshots) {
       const lastSS = await AppScreenshot.findOne({ app_id: app._id }).sort({ sort_order: -1 });
@@ -330,6 +376,7 @@ router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
       await AppScreenshot.insertMany(inserts);
     }
 
+    const updated = await App.findById(app._id);
     res.json({ message: 'App updated and resubmitted for review', app: updated.toJSON() });
   } catch (err) { next(err); }
 });
@@ -340,15 +387,23 @@ router.post('/:id/versions', requireAuth, requireDeveloper, upload.fields([
 ]), async (req, res, next) => {
   try {
     const app = await App.findOne({ _id: req.params.id, developer_id: req.user.id });
-    if (!app) return res.status(404).json({ error: 'App not found or access denied' });
+    if (!app) {
+      discardUploadedFiles(req.files);
+      return res.status(404).json({ error: 'App not found or access denied' });
+    }
 
     const { version, changelog, platform, min_os_version, external_file_url, external_file_size } = req.body;
 
+    const fail = (code, error) => { discardUploadedFiles(req.files); return res.status(code).json({ error }); };
+
     if (!version || (!req.files?.app_file?.[0] && !external_file_url)) {
-      return res.status(400).json({ error: 'Version and either an app file or external URL are required' });
+      return fail(400, 'Version and either an app file or external URL are required');
     }
-    if (!/^[a-zA-Z0-9.\-_+]{1,50}$/.test(version)) return res.status(400).json({ error: 'Version format is invalid' });
-    if (external_file_url && !isValidHttpUrl(external_file_url)) return res.status(400).json({ error: 'external_file_url must be a valid http or https URL' });
+    if (!/^[a-zA-Z0-9.\-_+]{1,50}$/.test(version)) return fail(400, 'Version format is invalid');
+    if (external_file_url && !isValidHttpUrl(external_file_url)) return fail(400, 'external_file_url must be a valid http or https URL');
+    if (external_file_size !== undefined && external_file_size !== '' && !Number.isFinite(Number(external_file_size))) {
+      return fail(400, 'external_file_size must be a number');
+    }
 
     let fileUrl, fileSize, fileHash = null;
     if (req.files?.app_file?.[0]) {
@@ -372,12 +427,12 @@ router.post('/:id/versions', requireAuth, requireDeveloper, upload.fields([
       min_os_version: min_os_version || null,
     });
 
-    await App.findByIdAndUpdate(app._id, { status: 'pending' });
+    await App.updateOne({ _id: app._id }, { status: 'pending' });
     res.status(201).json({ message: 'New version submitted for review' });
   } catch (err) { next(err); }
 });
 
-// GET /apps/:id/manage - Full detail for owner
+// GET /apps/:id/manage - Full app detail for the developer that owns it
 router.get('/:id/manage', requireAuth, requireDeveloper, async (req, res, next) => {
   try {
     const doc = await App.findOne({ _id: req.params.id, developer_id: req.user.id })
@@ -397,8 +452,11 @@ router.get('/:id/manage', requireAuth, requireDeveloper, async (req, res, next) 
 // POST /apps/:slug/reviews - Submit review
 router.post('/:slug/reviews', requireAuth, async (req, res, next) => {
   try {
-    const { rating, title, body } = req.body;
-    if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    const { title, body } = req.body;
+    const rating = Number(req.body.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
 
     const app = await App.findOne({ slug: req.params.slug, status: 'approved' });
     if (!app) return res.status(404).json({ error: 'App not found' });
@@ -406,14 +464,20 @@ router.post('/:slug/reviews', requireAuth, async (req, res, next) => {
     const existingReview = await Review.findOne({ app_id: app._id, user_id: req.user.id });
     if (existingReview) return res.status(409).json({ error: 'You have already reviewed this app' });
 
-    await Review.create({ app_id: app._id, user_id: req.user.id, rating, title: title || '', body: body || '' });
-    await recalcRating(app._id);
+    await Review.create({
+      app_id: app._id,
+      user_id: req.user.id,
+      rating,
+      title: typeof title === 'string' ? title : '',
+      body: typeof body === 'string' ? body : '',
+    });
+    await recalcAppRating(app._id);
 
     res.status(201).json({ message: 'Review submitted' });
   } catch (err) { next(err); }
 });
 
-// GET /apps/:slug/reviews
+// GET /apps/:slug/reviews - Get reviews
 router.get('/:slug/reviews', async (req, res, next) => {
   try {
     const app = await App.findOne({ slug: req.params.slug, status: 'approved' }, '_id');
@@ -446,7 +510,7 @@ router.post('/:id/download', async (req, res, next) => {
     await Download.create({
       app_id: app._id,
       version_id: version?._id || null,
-      user_id: req.user?._id || null,
+      user_id: req.user?.id || null,
       ip_address: req.ip,
       user_agent: req.headers['user-agent'] || null,
     });
@@ -481,7 +545,10 @@ router.post('/:slug/reviews/:reviewId/vote', requireAuth, async (req, res, next)
     const { vote } = req.body;
     if (vote !== 1 && vote !== -1) return res.status(400).json({ error: 'Vote must be 1 or -1' });
 
-    const existing = await ReviewVote.findOne({ review_id: req.params.reviewId, user_id: req.user.id });
+    const review = await Review.findById(req.params.reviewId);
+    if (!review) return res.status(404).json({ error: 'Review not found' });
+
+    const existing = await ReviewVote.findOne({ review_id: review._id, user_id: req.user.id });
 
     if (existing) {
       if (existing.vote === vote) {
@@ -491,31 +558,34 @@ router.post('/:slug/reviews/:reviewId/vote', requireAuth, async (req, res, next)
         await existing.save();
       }
     } else {
-      await ReviewVote.create({ review_id: req.params.reviewId, user_id: req.user.id, vote });
+      await ReviewVote.create({ review_id: review._id, user_id: req.user.id, vote });
     }
 
     const [agg] = await ReviewVote.aggregate([
-      { $match: { review_id: new mongoose.Types.ObjectId(req.params.reviewId) } },
+      { $match: { review_id: review._id } },
       { $group: { _id: null, total: { $sum: '$vote' } } },
     ]);
     const helpfulCount = agg?.total || 0;
-    await Review.findByIdAndUpdate(req.params.reviewId, { helpful_count: helpfulCount });
+    await Review.updateOne({ _id: review._id }, { helpful_count: helpfulCount });
 
     res.json({ helpful_count: helpfulCount });
   } catch (err) { next(err); }
 });
 
-// POST /apps/:slug/install
+// POST /apps/:slug/install - Install app for user
 router.post('/:slug/install', requireAuth, async (req, res, next) => {
   try {
-    const app = await App.findOne({ slug: req.params.slug });
+    const app = await App.findOne({ slug: req.params.slug, status: 'approved' });
     if (!app) return res.status(404).json({ error: 'App not found' });
 
     const latestVersion = await AppVersion.findOne({ app_id: app._id, status: 'approved' }).sort({ created_at: -1 });
 
     await AppInstallation.updateOne(
       { user_id: req.user.id, app_id: app._id },
-      { $set: { version_id: latestVersion?._id || null, installed_at: new Date(), updated_at: new Date() } },
+      {
+        $set: { version_id: latestVersion?._id || null, updated_at: new Date() },
+        $setOnInsert: { installed_at: new Date() },
+      },
       { upsert: true }
     );
 
@@ -523,7 +593,7 @@ router.post('/:slug/install', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /apps/:slug/install
+// DELETE /apps/:slug/install - Uninstall app for user
 router.delete('/:slug/install', requireAuth, async (req, res, next) => {
   try {
     const app = await App.findOne({ slug: req.params.slug });
