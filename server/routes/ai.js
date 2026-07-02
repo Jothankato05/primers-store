@@ -1,7 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth, requireDeveloper } = require('../middleware/auth');
+const { rateLimit } = require('../middleware/rateLimit');
 const { App } = require('../database');
+
+// The chat endpoint is public and each call costs gateway credits — keep it bounded
+const chatLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  message: 'Too many AI requests. Please try again later.',
+});
 
 const GATEWAY_URL = process.env.VERCEL_AI_GATEWAY_URL;
 const GATEWAY_KEY = process.env.VERCEL_AI_GATEWAY_KEY;
@@ -29,13 +37,20 @@ async function callAI(messages, opts = {}) {
     throw new Error(`AI gateway error ${res.status}: ${err.substring(0, 200)}`);
   }
   const data = await res.json();
-  return data.choices[0].message.content;
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string') throw new Error('AI gateway returned an unexpected response shape');
+  return content;
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // POST /api/ai/chat — public app discovery assistant
-router.post('/chat', async (req, res) => {
+router.post('/chat', chatLimiter, async (req, res) => {
   try {
-    const { message, history = [] } = req.body;
+    const { message } = req.body;
+    const history = Array.isArray(req.body.history) ? req.body.history : [];
     if (!message || typeof message !== 'string' || message.length > 500) {
       return res.status(400).json({ error: 'message required (max 500 chars)' });
     }
@@ -71,7 +86,11 @@ Rules:
       { role: 'user', content: message.trim() },
     ], { max_tokens: 300, temperature: 0.6 });
 
-    const mentioned = apps.filter(a => reply.includes(a.name)).map(a => ({
+    // Word-boundary match so short app names don't false-positive on substrings
+    const mentioned = apps.filter(a => {
+      try { return new RegExp(`(^|\\W)${escapeRegex(a.name)}($|\\W)`, 'i').test(reply); }
+      catch { return reply.includes(a.name); }
+    }).map(a => ({
       id: a._id.toString(),
       name: a.name,
       slug: a.slug,
@@ -80,7 +99,7 @@ Rules:
     res.json({ reply, apps: mentioned });
   } catch (e) {
     console.error('[AI /chat]', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'AI assistant is temporarily unavailable' });
   }
 });
 
@@ -107,7 +126,7 @@ router.post('/generate-description', requireAuth, requireDeveloper, async (req, 
     res.json({ short_description: shortDesc });
   } catch (e) {
     console.error('[AI /generate-description]', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: 'AI assistant is temporarily unavailable' });
   }
 });
 

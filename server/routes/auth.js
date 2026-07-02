@@ -1,8 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { generateToken, hashPassword, verifyPassword, User, Session } = require('../database');
+const { generateToken, hashPassword, verifyPassword, User, Session, DeveloperApplication } = require('../database');
 const { signToken, requireAuth } = require('../middleware/auth');
+const { rateLimit } = require('../middleware/rateLimit');
 
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days, matches JWT_EXPIRY
+
+// In-memory brute-force protection: 10 failed attempts per IP per 15 minutes
 const loginAttempts = new Map();
 const MAX_LOGIN_ATTEMPTS = 10;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -24,35 +28,48 @@ function recordFailedLogin(ip) {
   }
 }
 
+// Cleanup old entries every 15 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [ip, rec] of loginAttempts) {
     if (now >= rec.resetAt) loginAttempts.delete(ip);
   }
-}, LOGIN_WINDOW_MS);
+}, LOGIN_WINDOW_MS).unref();
 
-const { DeveloperApplication } = require('../database');
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: 'Too many accounts created from this address. Please try again later.',
+});
 
-// POST /api/auth/register
-router.post('/register', async (req, res, next) => {
+async function createSession(userId) {
+  const token = signToken(userId.toString());
+  await Session.create({ user_id: userId, token, expires_at: new Date(Date.now() + SESSION_TTL_MS) });
+  return token;
+}
+
+// Register
+router.post('/register', registerLimiter, async (req, res, next) => {
   try {
     const { username, email, password, display_name } = req.body;
 
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'Username, email, and password are required' });
     }
-    if (username.length < 3 || username.length > 30) {
+    if (typeof username !== 'string' || username.length < 3 || username.length > 30) {
       return res.status(400).json({ error: 'Username must be 3-30 characters' });
     }
-    if (password.length < 8) {
+    if (typeof password !== 'string' || password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
+    if (typeof email !== 'string' || !emailRegex.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    const existing = await User.findOne({ $or: [{ username }, { email: email.toLowerCase() }] });
+    // Case-insensitive username check so "Admin" can't impersonate "admin"
+    const usernameRe = new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    const existing = await User.findOne({ $or: [{ username: usernameRe }, { email: email.toLowerCase() }] });
     if (existing) return res.status(409).json({ error: 'Username or email already exists' });
 
     const user = await User.create({
@@ -63,12 +80,7 @@ router.post('/register', async (req, res, next) => {
       verification_token: generateToken(32),
     });
 
-    const token = signToken(user._id.toString());
-    await Session.create({
-      user_id: user._id,
-      token,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    });
+    const token = await createSession(user._id);
 
     res.status(201).json({
       message: 'Registration successful',
@@ -87,11 +99,14 @@ router.post('/register', async (req, res, next) => {
   }
 });
 
-// POST /api/auth/login
+// Login
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password are required' });
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Invalid credentials format' });
+    }
 
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
     if (isRateLimited(ip)) {
@@ -105,12 +120,7 @@ router.post('/login', async (req, res, next) => {
     }
 
     loginAttempts.delete(ip);
-    const token = signToken(user._id.toString());
-    await Session.create({
-      user_id: user._id,
-      token,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    });
+    const token = await createSession(user._id);
 
     res.json({
       user: {
@@ -130,7 +140,7 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
-// POST /api/auth/logout
+// Logout
 router.post('/logout', requireAuth, async (req, res, next) => {
   try {
     await Session.deleteOne({ token: req.sessionToken });
@@ -140,7 +150,7 @@ router.post('/logout', requireAuth, async (req, res, next) => {
   }
 });
 
-// GET /api/auth/me
+// Get current user
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id, 'username email display_name role email_verified avatar_url bio created_at');
@@ -151,7 +161,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
   }
 });
 
-// PATCH /api/auth/profile
+// Update profile
 router.patch('/profile', requireAuth, async (req, res, next) => {
   try {
     const { display_name, bio, avatar_url } = req.body;
@@ -164,11 +174,8 @@ router.patch('/profile', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'No fields to update' });
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { $set: updates },
-      { new: true, select: 'username email display_name role email_verified avatar_url bio' }
-    );
+    await User.updateOne({ _id: req.user.id }, { $set: updates });
+    const user = await User.findById(req.user.id, 'username email display_name role email_verified avatar_url bio');
 
     res.json({ user: user.toJSON() });
   } catch (err) {
@@ -176,12 +183,12 @@ router.patch('/profile', requireAuth, async (req, res, next) => {
   }
 });
 
-// POST /api/auth/apply-developer
+// Request developer role
 router.post('/apply-developer', requireAuth, async (req, res, next) => {
   try {
     const { company_name, reason } = req.body;
 
-    if (!reason || reason.length < 20) {
+    if (!reason || typeof reason !== 'string' || reason.length < 20) {
       return res.status(400).json({ error: 'Please provide a reason (minimum 20 characters)' });
     }
     if (req.user.role === 'developer' || req.user.role === 'admin') {

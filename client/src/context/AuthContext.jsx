@@ -19,9 +19,15 @@ async function apiRequest(path, options = {}) {
     try {
       data = await res.json();
     } catch {
-      throw new Error(res.ok ? 'Unexpected server response' : `Server error (${res.status})`);
+      const err = new Error(res.ok ? 'Unexpected server response' : `Server error (${res.status})`);
+      err.status = res.status;
+      throw err;
     }
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!res.ok) {
+      const err = new Error(data.error || 'Request failed');
+      err.status = res.status;
+      throw err;
+    }
     return data;
   } catch (err) {
     clearTimeout(timeout);
@@ -39,7 +45,11 @@ export function AuthProvider({ children }) {
     if (token) {
       apiRequest('/auth/me')
         .then(data => setUser(data.user))
-        .catch(() => localStorage.removeItem('primers_token'))
+        .catch(err => {
+          // Only discard the token when the server rejected it — a network blip
+          // or temporary outage must not log the user out of this device
+          if (err.status === 401) localStorage.removeItem('primers_token');
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);

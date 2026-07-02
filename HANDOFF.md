@@ -1,8 +1,8 @@
 # Primers Store — Full Project Handoff
 
-> **Last updated:** 2026-06-18 20:30 GMT+1  
-> **Built for:** Jothankato05  
-> **Status:** Live (Vercel + Render), 3D storefront, first app (Presona) seeding
+> **Last updated:** 2026-07-02
+> **Built for:** Jothankato05
+> **Status:** Live (Vercel + Railway + MongoDB Atlas), 3D storefront, first app (Presona) seeded
 
 ---
 
@@ -10,22 +10,24 @@
 
 | What | URL |
 |------|-----|
-|  Production frontend | `https://primers-store-ruddy.vercel.app` |
-|  Backend API | `https://primers-store.onrender.com` |
+|  Production frontend | `https://primers-store-liard.vercel.app` |
+|  Backend API | `https://primers-api-production.up.railway.app` |
 |  GitHub repo | `https://github.com/Jothankato05/primers-store` |
 |  Presona release | `https://github.com/Jothankato05/primers-store/releases/tag/v1.0.0` |
 |  Vercel dashboard | `https://vercel.com/dashboard` → primers-store |
-|  Render dashboard | `https://dashboard.render.com` → primers-store |
+|  Railway dashboard | `https://railway.app/dashboard` → primers-api |
+|  MongoDB Atlas | `https://cloud.mongodb.com` → primersstore cluster |
 
 ## Demo Accounts
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | `admin@primers.store` | `admin123` |
+| Admin | `admin@primers.store` | `admin123` (override with `ADMIN_PASSWORD` env var) |
 | Developer | `dev@primers.store` | `dev123456` |
 | User | `user@primers.store` | `user123456` |
 
 These auto-seed on first run (server/index.js `autoSeed()` function).
+**Change the admin password after first login** — these credentials are public in this repo.
 
 ---
 
@@ -34,7 +36,7 @@ These auto-seed on first run (server/index.js `autoSeed()` function).
 ```
 ┌─────────────────────────────────────────────────────┐
 │                  VERCEL (Frontend)                   │
-│          primers-store-ruddy.vercel.app              │
+│          primers-store-liard.vercel.app              │
 │                                                     │
 │  React 18 + Vite + Tailwind + Three.js              │
 │  - /login, /store, /store/:slug, /dashboard, etc.   │
@@ -42,26 +44,29 @@ These auto-seed on first run (server/index.js `autoSeed()` function).
 │  - 3D tilt app cards                                │
 │                                                     │
 │  vercel.json rewrites:                              │
-│    /api/*    → https://primers-store.onrender.com    │
-│    /uploads/* → https://primers-store.onrender.com   │
-│    /*        → /index.html (SPA catch-all)          │
+│    /api/*     → Railway backend                     │
+│    /uploads/* → Railway backend                     │
+│    /*         → /index.html (SPA catch-all)         │
 └──────────────┬──────────────────────────────────────┘
                │ HTTPS proxy
                ▼
 ┌─────────────────────────────────────────────────────┐
-│                  RENDER (Backend)                    │
-│           primers-store.onrender.com                 │
+│                 RAILWAY (Backend)                    │
+│        primers-api-production.up.railway.app         │
 │                                                     │
-│  Node.js + Express + SQLite (better-sqlite3)        │
+│  Node.js + Express + Mongoose                       │
 │  - JWT auth with PBKDF2 password hashing            │
 │  - Multer file uploads (500MB max)                  │
 │  - App review pipeline (pending→approved/rejected)  │
 │  - Developer application system                     │
 │  - Auto-seed on first run (users + Presona app)     │
-│                                                     │
-│   Free tier: sleeps after 15min inactivity        │
-│   Keep-alive cron pings /api/health every 10min   │
-│   Needs persistent disk for SQLite (1GB)          │
+└──────────────┬──────────────────────────────────────┘
+               │ mongodb+srv
+               ▼
+┌─────────────────────────────────────────────────────┐
+│               MONGODB ATLAS (Database)               │
+│           primersstore.07ocypu.mongodb.net            │
+│   Free M0 tier — persistent, survives redeploys      │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -72,90 +77,76 @@ These auto-seed on first run (server/index.js `autoSeed()` function).
 ```
 primers-store/
 ├── server/                    # Express backend
-│   ├── index.js               # Server entry + autoSeed
-│   ├── database.js            # SQLite setup, password hashing, JWT tokens
-│   ├── seed.js                # Standalone seed script (demo accounts + Presona)
+│   ├── index.js               # Server entry + autoSeed + Mongo connect w/ retry
+│   ├── database.js            # Mongoose connection, schemas/models, password hashing
+│   ├── seed.js                # Standalone seed script (demo accounts)
 │   ├── middleware/
-│   │   └── auth.js            # JWT middleware, role guards, signToken
+│   │   ├── auth.js            # JWT middleware, role guards, signToken
+│   │   └── rateLimit.js       # In-memory per-IP rate limiter
 │   ├── routes/
 │   │   ├── auth.js            # Register, login, profile, developer application
 │   │   ├── apps.js            # App CRUD, reviews, downloads, versions, screenshots
-│   │   └── admin.js           # Admin dashboard, app review, user management
-│   └── uploads/               # Uploaded files (icons, banners, app files)
+│   │   ├── admin.js           # Admin dashboard, app review, user management
+│   │   └── ai.js              # AI chat assistant, description generator, moderation
+│   └── uploads/               # Uploaded files (⚠ ephemeral on Railway — see Known Issues)
 ├── client/                    # React frontend
 │   ├── .npmrc                 # legacy-peer-deps=true (required for Three.js)
 │   ├── vercel.json            # SPA rewrites + API proxy
 │   ├── vite.config.js         # Dev proxy to :3001
 │   ├── tailwind.config.js     # Primers brand colors (#4361EE)
-│   ├── public/
-│   │   ├── primers-logo.svg   # Custom SVG logo (blue P + Primers text)
-│   │   ├── primers-logo-light.png   # Logo on white bg
-│   │   ├── primers-logo-dark.png    # Logo on black bg
-│   │   ├── primers-hero.jpg         # iPhone lifestyle mockup
-│   │   └── primers-mockup.jpg       # MacBook landing page mockup
 │   └── src/
-│       ├── context/
-│       │   └── AuthContext.jsx # Auth state, apiRequest, login/register/logout
-│       ├── components/
-│       │   ├── Navbar.jsx      # Top nav with Primers logo, search, user menu
-│       │   ├── Footer.jsx      # Site footer
-│       │   ├── Hero3DScene.jsx # Three.js 3D hero (rotating P, orbiting rings, particles)
-│       │   ├── AppCard3D.jsx   # 3D tilt card with glow effect on hover
-│       │   ├── AppCard.jsx     # Original flat card (still used in some places)
-│       │   ├── StarRating.jsx  # Star rating display/input
-│       │   └── LoadingScreen.jsx
-│       └── pages/
-│           ├── Home.jsx        # Landing with 3D hero + featured apps
-│           ├── Store.jsx       # Browse/search/filter apps
-│           ├── AppDetail.jsx   # App detail, reviews, download button
-│           ├── Login.jsx       # Login form (no demo buttons)
-│           ├── Register.jsx    # Registration form
-│           ├── Dashboard.jsx   # User dashboard + profile edit
-│           ├── DeveloperDashboard.jsx  # Dev stats + app management
-│           ├── SubmitApp.jsx   # Multi-step app submission form
-│           ├── EditApp.jsx     # Edit app, add versions, manage screenshots
-│           └── AdminDashboard.jsx  # App review, user management, dev applications
-├── render.yaml                # Render Blueprint config (Disk mount + JWT_SECRET)
-├── package.json               # Root: concurrently for dev
+│       ├── context/AuthContext.jsx  # Auth state, apiRequest, login/register/logout
+│       ├── components/        # Navbar, Footer, Hero3DScene, AppCard3D, AIChatWidget, ...
+│       └── pages/             # Home, Store, AppDetail, Login, Register, Dashboard,
+│                              # DeveloperDashboard, SubmitApp, EditApp, AdminDashboard
+├── launcher/                  # Electron desktop app (window.__PRIMERS__ bridge)
+├── package.json               # Root: server deps (express, mongoose, cors, jwt, multer)
 └── README.md
 ```
 
 ## Database Schema
 
-**SQLite** with the following tables:
-- `users` — roles: user/developer/admin, PBKDF2 password hashing
-- `apps` — status: pending/reviewing/approved/rejected/suspended, slug-based URLs
-- `app_versions` — file tracking with SHA256 hashes
-- `app_screenshots` — ordered screenshots per app
-- `reviews` — 1-5 star ratings, helpful votes
-- `review_votes` — upvote/downvote per review
-- `downloads` — download tracking with IP/user agent
-- `developer_applications` — request developer role with admin approval
-- `sessions` — JWT session tokens with expiry
+**MongoDB (Mongoose models)** — ids are ObjectId strings exposed as `id` in API responses:
+- `User` — roles: user/developer/admin, PBKDF2 password hashing
+- `App` — status: pending/reviewing/approved/rejected/suspended/removed, slug-based URLs
+- `AppVersion` — file tracking with SHA256 hashes
+- `AppScreenshot` — ordered screenshots per app
+- `Review` — 1-5 star ratings, unique per (app, user)
+- `ReviewVote` — upvote/downvote per review, unique per (review, user)
+- `Download` — download tracking with IP/user agent
+- `DeveloperApplication` — request developer role with admin approval
+- `Session` — JWT session tokens with expiry (cleaned hourly)
+- `AppInstallation` — per-user installed apps, unique per (user, app)
 
 ## API Endpoints
 
 ### Public
-- `GET /api/health` — Health check
-- `POST /api/auth/register` — { username, email, password, display_name }
-- `POST /api/auth/login` — { email, password } → { user, token }
+- `GET /api/health` — Health check (reports `db` connection state; 503 while degraded)
+- `POST /api/auth/register` — { username, email, password, display_name } (rate limited)
+- `POST /api/auth/login` — { email, password } → { user, token } (brute-force protected)
 - `GET /api/apps` — List approved apps (?search, ?category, ?sort, ?limit, ?offset)
 - `GET /api/apps/categories` — Category list with counts
-- `GET /api/apps/:slug` — App detail + reviews + screenshots
-- `POST /api/apps/:slug/reviews` — Submit review (auth required)
+- `GET /api/apps/:slug` — App detail + reviews + screenshots + latest_version
 - `POST /api/apps/:id/download` — Track download
 - `GET /api/apps/:slug/reviews` — Get reviews for app
+- `POST /api/ai/chat` — AI app discovery assistant (rate limited)
 
 ### Authenticated (any user)
 - `GET /api/auth/me` — Current user
 - `PATCH /api/auth/profile` — Update display_name, bio, avatar_url
+- `POST /api/auth/logout` — Invalidate session
 - `POST /api/auth/apply-developer` — Request developer role
+- `POST /api/apps/:slug/reviews` — Submit review
+- `POST /api/apps/:slug/reviews/:reviewId/vote` — Helpful vote
+- `POST/DELETE /api/apps/:slug/install` — Install/uninstall tracking
 
 ### Developer
 - `GET /api/apps/developer/mine` — Developer's apps
 - `POST /api/apps` — Create app (multipart: name, description, category, icon, screenshots, app_file)
 - `PATCH /api/apps/:id` — Update app + media
 - `POST /api/apps/:id/versions` — Add new version with file
+- `POST /api/ai/generate-description` — AI short-description generator
+- `POST /api/ai/moderate` — AI content moderation (fails open)
 
 ### Admin
 - `GET /api/admin/dashboard` — Stats overview
@@ -166,37 +157,22 @@ primers-store/
 
 ## Known Issues
 
-### 1. Render Authentication (INTERMITTENT)
-**Symptom:** Login succeeds (returns token + user), but subsequent API calls with the token return 401.
-**Cause:** Unclear — possibly related to Render cold starts or database connection issues on free tier.
-**Workaround:** The keep-alive cron prevents sleeping. Still investigating root cause.
-**Last tested:** 2026-06-18 20:13 — login + /me BOTH worked through Vercel proxy.
+### 1. Uploads are ephemeral on Railway
+**Symptom:** App icons, banners, screenshots, and uploaded app files disappear after a redeploy/restart.
+**Cause:** `server/uploads/` lives on Railway's ephemeral filesystem.
+**Fix options:** attach a Railway volume mounted at `/app/server/uploads`, or (better) move uploads
+to object storage (Cloudflare R2 / S3). External download URLs (like Presona's archive.org link)
+are unaffected.
 
-### 2. GitHub Release Missing File
-**Symptom:** Presona shows on the store but download link is broken.
-**Cause:** The 1.5GB `Presona-Installer.exe` failed to upload via CLI (timeout).
-**Fix:** Upload manually:
-1. Go to `https://github.com/Jothankato05/primers-store/releases/tag/v1.0.0`
-2. Drag `C:\Users\jerry\Downloads\Presona-Installer.exe` into the release
-3. Publish the release
-
-### 3. Large Bundle Size
+### 2. Large Bundle Size
 **Symptom:** Production JS bundle is ~1.2MB (337KB gzipped).
 **Cause:** Three.js library included for 3D hero + cards.
 **Mitigation:** Already acceptable. Could code-split with `React.lazy()` if needed.
 
-### 4. File Case Sensitivity
+### 3. File Case Sensitivity
 **Symptom:** Build fails on Linux/Vercel with import errors.
 **Cause:** Files committed with lowercase names but imported with PascalCase.
-**Fix:** All files renamed to match imports (commit `26238ef`). New files MUST use PascalCase for components/pages.
-
-## Keep-Alive Cron
-
-A cron job pings `https://primers-store.onrender.com/api/health` every 10 minutes to prevent Render's free tier from sleeping.
-
-- **Cron ID:** `ed91572a-59c9-4bd0-9e79-5bcf5eec2795`
-- **Schedule:** Every 10 minutes
-- **Managed via:** OpenClaw cron system
+**Fix:** All files renamed to match imports. New files MUST use PascalCase for components/pages.
 
 ## Deployment Flow
 
@@ -209,16 +185,25 @@ A cron job pings `https://primers-store.onrender.com/api/health` every 10 minute
 - **Environment Variables needed:** None (rewrites handle proxy)
 - **Required file:** `client/.npmrc` with `legacy-peer-deps=true`
 
-### Render (Backend)
+### Railway (Backend)
 - **Auto-deploys** on push to `main` branch
 - **Runtime:** Node.js
-- **Build Command:** `npm install`
 - **Start Command:** `node server/index.js`
-- **Required Disk:** 1GB persistent, mount path `/opt/render/project/src/server`
-- **Environment Variables:**
+- **Environment Variables (required):**
+  - `MONGODB_URI` = MongoDB Atlas connection string (include a database name in the path,
+    e.g. `...mongodb.net/primers_store?retryWrites=true&w=majority`)
+  - `JWT_SECRET` = long random string (sessions invalidate if this changes)
   - `NODE_ENV` = `production`
-  - `JWT_SECRET` = (auto-generated or set manually)
-  - `PORT` = (auto-set by Render, defaults to 10000)
+- **Environment Variables (optional):**
+  - `ADMIN_PASSWORD` / `ADMIN_EMAIL` — override the seeded admin account
+  - `CORS_ORIGIN` — extra allowed origin beyond `primers-store*.vercel.app`
+  - `VERCEL_AI_GATEWAY_URL` / `VERCEL_AI_GATEWAY_KEY` / `VERCEL_AI_MODEL` — AI features
+  - `DESKTOP_INSTALLER_URL` — desktop download redirect
+
+### MongoDB Atlas
+- Free M0 cluster, database name `primers_store` (created automatically on first write)
+- **Network Access must allow Railway** — easiest is `0.0.0.0/0` (Allow Access from Anywhere)
+- Rotate credentials from Atlas → Database Access if they ever leak
 
 ## Colors & Branding
 
@@ -232,18 +217,16 @@ Tailwind config: `client/tailwind.config.js` — `primer` color scale from 50 to
 
 ## If You Need to Reset Everything
 
-1. **Wipe database:** Delete the Render persistent disk and redeploy
+1. **Wipe database:** Atlas → Browse Collections → drop the `primers_store` database, then restart the Railway service (auto-seed re-runs)
 2. **Wipe Vercel cache:** Redeploy from Vercel dashboard with "Clear cache"
-3. **Re-seed locally:** `npm run seed` in project root
+3. **Re-seed manually:** `MONGODB_URI=... npm run seed` in project root
 4. **Fresh install:** `rm -rf node_modules && npm run install:all`
 
 ## What Comes Next (Suggested)
 
-1. **Finish Presona upload** — Drag installer to GitHub release
+1. **Object storage for uploads** — Cloudflare R2 or S3 (fixes Known Issue #1)
 2. **Add email verification** — Currently stubbed but not implemented (no SMTP)
 3. **Payment system** — Stripe integration for paid apps
 4. **Auto-update mechanism** — App version checking + background updates
 5. **Analytics dashboard** — Download/rating trends for developers
 6. **Custom domain** — `primers.store` or similar on Vercel
-7. **Switch to PostgreSQL** — Neon (free) for production reliability instead of SQLite
-8. **CDN for uploads** — Cloudflare R2 or S3 for app file storage

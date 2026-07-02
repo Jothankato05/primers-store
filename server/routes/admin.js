@@ -1,12 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { User, App, AppVersion, AppScreenshot, Review, DeveloperApplication } = require('../database');
+const { User, App, AppVersion, AppScreenshot, Review, DeveloperApplication, recalcAppRating } = require('../database');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 router.use(requireAuth, requireAdmin);
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Coerce a query param to a bounded integer (NaN-safe)
+function toInt(value, fallback, max) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return max ? Math.min(n, max) : n;
 }
 
 // GET /admin/dashboard
@@ -30,19 +37,22 @@ router.get('/dashboard', async (req, res, next) => {
 // GET /admin/users
 router.get('/users', async (req, res, next) => {
   try {
-    const { search, role, limit = 50, offset = 0 } = req.query;
+    const { search, role } = req.query;
+    const limit = toInt(req.query.limit, 50, 200);
+    const offset = toInt(req.query.offset, 0);
+
     const filter = {};
-    if (search) {
+    if (search && typeof search === 'string') {
       const re = new RegExp(escapeRegex(search), 'i');
       filter.$or = [{ username: re }, { email: re }, { display_name: re }];
     }
-    if (role) filter.role = role;
+    if (role && typeof role === 'string') filter.role = role;
 
     const total = await User.countDocuments(filter);
     const docs = await User.find(filter, 'username email display_name role email_verified created_at')
       .sort({ created_at: -1 })
-      .skip(Number(offset))
-      .limit(Number(limit));
+      .skip(offset)
+      .limit(limit);
 
     res.json({ users: docs.map(u => u.toJSON()), total });
   } catch (err) { next(err); }
@@ -72,11 +82,14 @@ router.patch('/users/:id/verify', async (req, res, next) => {
 // GET /admin/apps
 router.get('/apps', async (req, res, next) => {
   try {
-    const { status, search, category, limit = 50, offset = 0 } = req.query;
+    const { status, search, category } = req.query;
+    const limit = toInt(req.query.limit, 50, 200);
+    const offset = toInt(req.query.offset, 0);
+
     const filter = {};
-    if (status) filter.status = status;
-    if (category) filter.category = category;
-    if (search) {
+    if (status && typeof status === 'string') filter.status = status;
+    if (category && typeof category === 'string') filter.category = category;
+    if (search && typeof search === 'string') {
       const re = new RegExp(escapeRegex(search), 'i');
       filter.$or = [{ name: re }, { description: re }];
     }
@@ -84,8 +97,8 @@ router.get('/apps', async (req, res, next) => {
     const total = await App.countDocuments(filter);
     const docs = await App.find(filter)
       .sort({ updated_at: -1 })
-      .skip(Number(offset))
-      .limit(Number(limit))
+      .skip(offset)
+      .limit(limit)
       .populate('developer_id', 'username email display_name');
 
     const apps = docs.map(d => {
@@ -155,7 +168,7 @@ router.patch('/apps/:id/review', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// PATCH /admin/apps/:id/versions/:versionId/url
+// PATCH /admin/apps/:id/versions/:versionId/url - Update download URL (for external/large files)
 router.patch('/apps/:id/versions/:versionId/url', async (req, res, next) => {
   try {
     const { file_url, file_size } = req.body;
@@ -165,7 +178,7 @@ router.patch('/apps/:id/versions/:versionId/url', async (req, res, next) => {
     if (!version) return res.status(404).json({ error: 'Version not found' });
 
     version.file_url = file_url;
-    if (file_size) version.file_size = Number(file_size);
+    if (file_size && Number.isFinite(Number(file_size))) version.file_size = Number(file_size);
     await version.save();
 
     res.json({ message: 'Download URL updated', version: version.toJSON() });
@@ -201,7 +214,7 @@ router.get('/developer-applications', async (req, res, next) => {
   try {
     const { status } = req.query;
     const filter = {};
-    if (status) filter.status = status;
+    if (status && typeof status === 'string') filter.status = status;
 
     const docs = await DeveloperApplication.find(filter)
       .sort({ created_at: -1 })
@@ -237,7 +250,8 @@ router.patch('/developer-applications/:id/review', async (req, res, next) => {
     await application.save();
 
     if (status === 'approved') {
-      await User.findByIdAndUpdate(application.user_id, { role: 'developer' });
+      // Only promote regular users — never overwrite an admin's role
+      await User.updateOne({ _id: application.user_id, role: 'user' }, { role: 'developer' });
     }
 
     res.json({ message: `Developer application ${status}` });
@@ -247,12 +261,14 @@ router.patch('/developer-applications/:id/review', async (req, res, next) => {
 // GET /admin/reviews
 router.get('/reviews', async (req, res, next) => {
   try {
-    const { limit = 50, offset = 0 } = req.query;
+    const limit = toInt(req.query.limit, 50, 200);
+    const offset = toInt(req.query.offset, 0);
+
     const total = await Review.countDocuments();
     const docs = await Review.find()
       .sort({ created_at: -1 })
-      .skip(Number(offset))
-      .limit(Number(limit))
+      .skip(offset)
+      .limit(limit)
       .populate('user_id', 'username')
       .populate('app_id', 'name slug');
 
@@ -278,15 +294,7 @@ router.delete('/reviews/:id', async (req, res, next) => {
 
     const appId = review.app_id;
     await Review.deleteOne({ _id: review._id });
-
-    const [stat] = await Review.aggregate([
-      { $match: { app_id: appId } },
-      { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
-    ]);
-    await App.updateOne({ _id: appId }, {
-      rating_avg: stat ? Math.round(stat.avg * 10) / 10 : 0,
-      rating_count: stat?.count || 0,
-    });
+    await recalcAppRating(appId);
 
     res.json({ message: 'Review deleted' });
   } catch (err) { next(err); }

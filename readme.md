@@ -35,7 +35,7 @@ A full-featured app store platform built from scratch — upload, verify, and di
 
 - **Frontend:** React 18, Tailwind CSS, React Router, Lucide Icons, React Dropzone
 - **Backend:** Node.js, Express.js
-- **Database:** SQLite (via better-sqlite3)
+- **Database:** MongoDB (via Mongoose)
 - **Auth:** JWT with PBKDF2 password hashing
 
 ## Getting Started
@@ -74,7 +74,7 @@ Backend API: `http://localhost:3001`
 primers-store/
 ├── server/
 │   ├── index.js          # Express server
-│   ├── database.js       # SQLite setup + helpers
+│   ├── database.js       # Mongoose connection + models
 │   ├── seed.js           # Demo data seeder
 │   ├── middleware/
 │   │   └── auth.js       # JWT auth middleware
