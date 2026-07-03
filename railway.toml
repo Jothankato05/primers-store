@@ -1,2 +1,5 @@
 [build]
-buildCommand = "cd client && npm ci --include=dev && cd .. && npm run build"
+buildCommand = "npm run build"
+
+[deploy]
+startCommand = "npm start"
