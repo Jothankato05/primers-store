@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-            <span>© 2026 Primers Store</span>
+            <span>© 2026 Primers Store · from <a href="https://primersgroup.ng" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors" style={{ textDecoration: 'underline' }}>Primers Group</a></span>
             <span className="hidden sm:inline" style={{ color: 'var(--border-strong)' }}>|</span>
             <span>Your trusted marketplace for verified apps</span>
           </div>
