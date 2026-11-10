@@ -13,6 +13,7 @@ export default function Footer() {
           <div className="flex items-center gap-6 text-sm" style={{ color: 'var(--text-muted)' }}>
             <Link to="/store" className="hover:text-white transition-colors">Browse Apps</Link>
             <Link to="/register" className="hover:text-white transition-colors">Sign Up</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <a href="mailto:primerscorperation@gmail.com" className="hover:text-white transition-colors">Contact</a>
             <a href="https://github.com/Jothankato05/primers-store" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
           </div>

@@ -3,6 +3,7 @@ import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import PrimersIdButton from '../components/PrimersIdButton';
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -46,6 +47,10 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
+          <PrimersIdButton />
+          <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span className="h-px flex-1" style={{ background: 'var(--border, rgba(127,127,127,.25))' }} /> or with your Store password <span className="h-px flex-1" style={{ background: 'var(--border, rgba(127,127,127,.25))' }} />
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-body)' }}>Email</label>
             <div className="relative">

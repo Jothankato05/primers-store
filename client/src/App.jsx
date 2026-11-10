@@ -14,6 +14,8 @@ const Store = lazy(() => import('./pages/Store'));
 const AppDetail = lazy(() => import('./pages/AppDetail'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const PrimersReturn = lazy(() => import('./pages/PrimersReturn'));
+const Privacy = lazy(() => import('./pages/Privacy'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const DeveloperDashboard = lazy(() => import('./pages/DeveloperDashboard'));
 const SubmitApp = lazy(() => import('./pages/SubmitApp'));
@@ -46,6 +48,8 @@ export default function App() {
             <Route path="/store/:slug" element={<AppDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/auth/primers" element={<PrimersReturn />} />
+            <Route path="/privacy" element={<Privacy />} />
 
             <Route path="/dashboard" element={
               <PrivateRoute><Dashboard /></PrivateRoute>

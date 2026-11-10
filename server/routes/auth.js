@@ -3,6 +3,7 @@ const router = express.Router();
 const { generateToken, hashPassword, verifyPassword, User, Session, DeveloperApplication } = require('../database');
 const { signToken, requireAuth } = require('../middleware/auth');
 const { rateLimit } = require('../middleware/rateLimit');
+const { exchangePrimersCode, PrimersIdError } = require('../primersId');
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days, matches JWT_EXPIRY
 
@@ -136,6 +137,69 @@ router.post('/login', async (req, res, next) => {
       token,
     });
   } catch (err) {
+    next(err);
+  }
+});
+
+// Continue with Primers ID: the browser sends the one-time code and its PKCE verifier.
+const PRIMERS_CLIENT_ID = 'primers-store';
+const PRIMERS_REDIRECT_URI = 'https://store.primersgroup.ng/auth/primers';
+const primersLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: 'Too many sign-in attempts. Please try again later.' });
+
+async function uniqueUsername(email) {
+  const base = (email.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20).padEnd(3, '0');
+  for (let i = 0; i < 6; i++) {
+    const candidate = i === 0 ? base : `${base}${Math.floor(1000 + Math.random() * 9000)}`;
+    const re = new RegExp(`^${candidate}$`, 'i');
+    if (!(await User.exists({ username: re }))) return candidate;
+  }
+  return `${base}${generateToken(4)}`;
+}
+
+router.post('/primers', primersLimiter, async (req, res, next) => {
+  try {
+    const { code, verifier } = req.body || {};
+    if (typeof code !== 'string' || code.length < 20 || code.length > 200 || typeof verifier !== 'string' || !/^[A-Za-z0-9_-]{43,128}$/.test(verifier)) {
+      return res.status(400).json({ error: 'That sign-in expired. Please try again.' });
+    }
+    const who = await exchangePrimersCode({ clientId: PRIMERS_CLIENT_ID, redirectUri: PRIMERS_REDIRECT_URI, code, verifier });
+
+    let user = await User.findOne({ primers_id_sub: who.sub });
+    if (!user) {
+      user = await User.findOne({ email: who.email });
+      if (user) {
+        // An existing account with this email. If its email was never verified, someone else may have
+        // registered it first: the verified Primers ID owner takes it over, so cancel the old password
+        // and sign out every existing session.
+        if (!user.email_verified) {
+          user.password_hash = hashPassword(generateToken(32));
+          user.email_verified = true;
+          await Session.deleteMany({ user_id: user._id });
+        }
+        user.primers_id_sub = who.sub;
+        await user.save();
+      } else {
+        user = await User.create({
+          username: await uniqueUsername(who.email),
+          email: who.email,
+          password_hash: hashPassword(generateToken(32)), // no usable password; they sign in with Primers ID
+          display_name: who.name || who.email.split('@')[0],
+          email_verified: true,
+          primers_id_sub: who.sub,
+        });
+      }
+    }
+
+    const token = await createSession(user._id);
+    res.json({
+      user: {
+        id: user._id.toString(), username: user.username, email: user.email, display_name: user.display_name,
+        role: user.role, email_verified: user.email_verified, avatar_url: user.avatar_url, bio: user.bio,
+      },
+      token,
+    });
+  } catch (err) {
+    if (err instanceof PrimersIdError) return res.status(400).json({ error: err.message });
     next(err);
   }
 });

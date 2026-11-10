@@ -66,6 +66,16 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
+  const loginWithPrimers = useCallback(async (code, verifier) => {
+    const data = await apiRequest('/auth/primers', {
+      method: 'POST',
+      body: JSON.stringify({ code, verifier }),
+    });
+    localStorage.setItem('primers_token', data.token);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   const register = useCallback(async (username, email, password, displayName) => {
     const data = await apiRequest('/auth/register', {
       method: 'POST',
@@ -94,7 +104,7 @@ export function AuthProvider({ children }) {
   const isDeveloper = user?.role === 'developer' || user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, isAdmin, isDeveloper, apiRequest }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithPrimers, register, logout, refreshUser, isAdmin, isDeveloper, apiRequest }}>
       {children}
     </AuthContext.Provider>
   );

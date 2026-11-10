@@ -47,6 +47,8 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, default: 'user', enum: ['user', 'developer', 'admin'] },
   email_verified: { type: Boolean, default: false },
   verification_token: String,
+  // Linked Primers ID (its account number for this app), set on first "Continue with Primers ID".
+  primers_id_sub: { type: String, unique: true, sparse: true },
   avatar_url: String,
   bio: String,
 }, { ...ts(), toJSON });
