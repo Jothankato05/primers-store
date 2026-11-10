@@ -31,7 +31,7 @@ export default function Privacy() {
       <p>Service providers who run the store for us: Vercel (website hosting and AI Gateway), Railway (our server), MongoDB Atlas (database) and, if you use it, Primers ID. They act on our instructions. Some store data outside Nigeria, under the transfer safeguards the NDPA allows. We disclose data if the law requires it.</p>
 
       <H>How long we keep it</H>
-      <p>Your account data is kept while your account is open. Download records are kept for up to 24 months. When you ask us to delete your account, we delete or anonymise your personal data within 30 days, except what the law requires us to keep.</p>
+      <p>Your account data and download records are kept while your account is open. When you ask us to delete your account, we delete or anonymise your personal data within 30 days, except what the law requires us to keep.</p>
 
       <H>Your rights</H>
       <p>You can ask to access, correct, download or delete your data, object to processing, or withdraw consent, by emailing primerscorperation@gmail.com from your account&apos;s address. We reply within 30 days. You can also complain to the Nigeria Data Protection Commission (ndpc.gov.ng).</p>
