@@ -37,7 +37,7 @@ export default function Privacy() {
       <p>You can ask to access, correct, download or delete your data, object to processing, or withdraw consent, by emailing primerscorperation@gmail.com from your account&apos;s address. We reply within 30 days. You can also complain to the Nigeria Data Protection Commission (ndpc.gov.ng).</p>
 
       <H>Security</H>
-      <p>We use encryption in transit, hashed passwords, limited staff access and audit logs. If a breach is likely to put your rights at risk, we notify the NDPC within 72 hours and tell you without undue delay.</p>
+      <p>We use encryption in transit, hashed passwords and limited staff access. If a breach is likely to put your rights at risk, we notify the NDPC within 72 hours and tell you without undue delay.</p>
 
       <H>Children</H>
       <p>Primers Store isn&apos;t for children under 13. Developers must not publish apps aimed at children without their own compliant privacy policy.</p>
