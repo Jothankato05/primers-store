@@ -54,7 +54,7 @@ export default function Register() {
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <PrimersIdButton label="Sign up with Primers ID" />
+          <PrimersIdButton label="Sign up with Primers ID" signup />
           <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
             <span className="h-px flex-1" style={{ background: 'var(--border, rgba(127,127,127,.25))' }} /> or create a Store password <span className="h-px flex-1" style={{ background: 'var(--border, rgba(127,127,127,.25))' }} />
           </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { startPrimersSignIn } from '../lib/primersId';
 
-export default function PrimersIdButton({ returnTo = '/', label = 'Continue with Primers ID' }) {
+export default function PrimersIdButton({ returnTo = '/', label = 'Continue with Primers ID', signup = false }) {
   const [busy, setBusy] = useState(false);
   return (
     <button
@@ -9,7 +9,7 @@ export default function PrimersIdButton({ returnTo = '/', label = 'Continue with
       disabled={busy}
       onClick={() => {
         setBusy(true);
-        startPrimersSignIn('primers-store', returnTo).catch(() => setBusy(false));
+        startPrimersSignIn('primers-store', returnTo, signup).catch(() => setBusy(false));
       }}
       className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
       style={{ background: '#4D78FF' }}

@@ -8,15 +8,17 @@ const KEY = 'primers-id-connect';
 const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const random = (n) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 
-export async function startPrimersSignIn(clientId, returnTo = '/') {
+// signup: open Primers ID on "Create account" (OpenID prompt=create); it comes back here signed in.
+export async function startPrimersSignIn(clientId, returnTo = '/', signup = false) {
   const verifier = random(32);
   const state = random(16);
   const challenge = b64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
-  sessionStorage.setItem(KEY, JSON.stringify({ verifier, state, returnTo, at: Date.now() }));
+  localStorage.setItem(KEY, JSON.stringify({ verifier, state, returnTo, at: Date.now() }));
   const u = new URL('/connect', PRIMERS_ID_URL);
   u.search = new URLSearchParams({
     client_id: clientId, redirect_uri: `${window.location.origin}/auth/primers`,
     code_challenge: challenge, code_challenge_method: 'S256', state,
+    ...(signup ? { prompt: 'create' } : {}),
   }).toString();
   window.location.assign(u.href);
 }
@@ -26,11 +28,11 @@ export function finishPrimersSignIn() {
   const params = new URLSearchParams(window.location.search);
   window.history.replaceState(null, '', window.location.pathname); // keep the code out of history
   let saved = null;
-  try { saved = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch { /* ignore */ }
-  sessionStorage.removeItem(KEY);
+  try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { /* ignore */ }
+  localStorage.removeItem(KEY);
   if (params.get('error')) throw new Error('Sign-in was cancelled.');
   const code = params.get('code');
-  if (!saved || !code || params.get('state') !== saved.state || Date.now() - saved.at > 10 * 60_000) {
+  if (!saved || !code || params.get('state') !== saved.state || Date.now() - saved.at > 30 * 60_000) {
     throw new Error('That sign-in link expired. Please try again.');
   }
   const returnTo = /^\/(?!\/)/.test(saved.returnTo || '') ? saved.returnTo : '/';
