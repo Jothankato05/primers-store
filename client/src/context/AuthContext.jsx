@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { followPrimersId, markPrimersLinked } from '../lib/primersFollow';
+import { startPrimersSignIn } from '../lib/primersId';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
@@ -62,6 +64,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password }),
     });
     localStorage.setItem('primers_token', data.token);
+    markPrimersLinked(false);
     setUser(data.user);
     return data.user;
   }, []);
@@ -72,6 +75,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ code, verifier }),
     });
     localStorage.setItem('primers_token', data.token);
+    markPrimersLinked(true);
     setUser(data.user);
     return data.user;
   }, []);
@@ -82,6 +86,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ username, email, password, display_name: displayName }),
     });
     localStorage.setItem('primers_token', data.token);
+    markPrimersLinked(false);
     setUser(data.user);
     return data.user;
   }, []);
@@ -89,9 +94,18 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try { await apiRequest('/auth/logout', { method: 'POST' }); } catch {}
     localStorage.removeItem('primers_token');
+    markPrimersLinked(false);
     setUser(null);
     toast.success('Logged out');
   }, []);
+
+  // Follow the Primers bar: an account switch there signs you in here as that account; signing out of
+  // Primers ID signs you out here if you came in with Primers ID.
+  useEffect(() => followPrimersId({
+    isSignedIn: () => !!localStorage.getItem('primers_token'),
+    signIn: () => { startPrimersSignIn('primers-store', window.location.pathname + window.location.search).catch(() => {}); },
+    signOut: () => { logout(); },
+  }), [logout]);
 
   const refreshUser = useCallback(async () => {
     try {
