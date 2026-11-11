@@ -157,10 +157,14 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <button className="md:hidden p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors" style={noDrag} onClick={() => setMenuOpen(!menuOpen)}>
-            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-1" style={noDrag}>
+            {/* Primers bar (apps + your Primers ID), filled in by id.primersgroup.ng/bar.js */}
+            <span id="primers-bar-slot" className="flex items-center md:ml-2" />
+            {/* Mobile menu button */}
+            <button className="md:hidden p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
+              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </div>
 
