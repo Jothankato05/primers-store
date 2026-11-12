@@ -13,9 +13,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'three': ['three'],
-          'vendor': ['react', 'react-dom', 'react-router-dom'],
+        // Vite 8 takes a function here: keep three.js and the React runtime in their own cached files.
+        manualChunks(id) {
+          if (/node_modules\/three\//.test(id)) return 'three';
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return 'vendor';
         },
       },
     },
