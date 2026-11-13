@@ -21,6 +21,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 async function autoSeed() {
+  if (process.env.SKIP_SEED === '1') return;
   const userCount = await User.countDocuments();
   if (userCount === 0) {
     // Production never gets publicly known passwords: the admin needs ADMIN_PASSWORD, and the
@@ -97,6 +98,28 @@ app.use(express.urlencoded({ extended: true }));
 
 // Files uploaded before storage moved to Vercel Blob (local development only)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// TEMPORARY (migration from Railway): which database in the cluster holds the store's data.
+// Needs DIAG_TOKEN; counts only, no records. Remove after the move.
+app.get('/api/_diag', async (req, res) => {
+  const t = process.env.DIAG_TOKEN;
+  if (!t || req.query.t !== t) return res.status(404).json({ error: 'Not found' });
+  try {
+    await connectDb(); // connect only: never seed while we're still finding the right database
+    const mongoose = require('mongoose');
+    const client = mongoose.connection.getClient();
+    const { databases } = await client.db().admin().listDatabases({ nameOnly: true });
+    const out = [];
+    for (const { name } of databases) {
+      if (['admin', 'local', 'config'].includes(name)) continue;
+      const db = client.db(name);
+      const cols = (await db.listCollections({}, { nameOnly: true }).toArray()).map(c => c.name);
+      const count = async (c) => cols.includes(c) ? db.collection(c).countDocuments() : null;
+      out.push({ name, users: await count('users'), apps: await count('apps'), appversions: await count('appversions') });
+    }
+    res.json({ current: mongoose.connection.name, databases: out });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // Serverless-friendly database start: connect once per instance, seed once, and clean up
 // expired sessions at most hourly. A failed connect is retried on the next request.

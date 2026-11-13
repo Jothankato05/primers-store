@@ -8,7 +8,7 @@ if (!process.env.MONGODB_URI) {
 
 async function connectDb() {
   if (mongoose.connection.readyState === 0) {
-    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
+    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000, ...(process.env.MONGODB_DB ? { dbName: process.env.MONGODB_DB } : {}) });
     console.log('✅ MongoDB connected');
     // Surface index-build failures (e.g. duplicate data vs a unique index) instead
     // of letting uniqueness silently go unenforced
