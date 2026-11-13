@@ -371,11 +371,11 @@ export default function EditApp() {
                 <label className="block text-sm font-medium">App File *</label>
                 <div className="flex rounded-lg overflow-hidden text-xs" style={{ border: '1px solid var(--border)' }}>
                   <button type="button" onClick={() => setVersionUseExternalUrl(false)}
-                    className={`px-3 py-1 font-medium transition-colors ${!versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
+                    className={`px-3 py-1 font-medium transition-colors ${!versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-black/[0.03] text-ink/80 hover:bg-black/[0.06]'}`}>
                     Upload
                   </button>
                   <button type="button" onClick={() => setVersionUseExternalUrl(true)}
-                    className={`px-3 py-1 font-medium transition-colors ${versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
+                    className={`px-3 py-1 font-medium transition-colors ${versionUseExternalUrl ? 'bg-primer-600 text-white' : 'bg-black/[0.03] text-ink/80 hover:bg-black/[0.06]'}`}>
                     External URL
                   </button>
                 </div>

@@ -136,13 +136,13 @@ export default function AdminDashboard() {
             key={t.id}
             onClick={() => { setTab(t.id); if (t.id === 'reviews') loadReviews(); if (t.id === 'developers') loadDevApplications(); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === t.id ? 'bg-primer-600 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 border border-white/10'
+              tab === t.id ? 'bg-primer-600 text-white' : 'bg-black/[0.03] text-ink/90 hover:bg-black/[0.06] border border-black/10'
             }`}
           >
             <t.icon className="w-4 h-4" /> {t.label}
             {t.badge > 0 && (
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                tab === t.id ? 'bg-white/20 text-white' : 'bg-red-500 text-white'
+                tab === t.id ? 'bg-black/[0.08] text-white' : 'bg-red-500 text-white'
               }`}>{t.badge}</span>
             )}
           </button>
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
               </thead>
               <tbody style={{ borderTop: '1px solid var(--border)' }}>
                 {users.map(u => (
-                  <tr key={u.id} className="hover:bg-white/5" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr key={u.id} className="hover:bg-black/[0.04]" style={{ borderBottom: '1px solid var(--border)' }}>
                     <td className="px-4 py-3">
                       <p className="font-medium text-sm" style={{ color: 'var(--text-strong)' }}>{u.display_name || u.username}</p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
@@ -395,7 +395,7 @@ export default function AdminDashboard() {
               <h2 className="text-xl font-bold" style={{ color: 'var(--text-strong)' }}>{appDetail.name}</h2>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>by {appDetail.developer_name} • {appDetail.category}</p>
             </div>
-            <button onClick={() => setAppDetail(null)} className="text-2xl leading-none hover:text-white transition-colors" style={{ color: 'var(--text-muted)' }}>&times;</button>
+            <button onClick={() => setAppDetail(null)} className="text-2xl leading-none hover:text-ink transition-colors" style={{ color: 'var(--text-muted)' }}>&times;</button>
           </div>
           <div className="p-6 space-y-6">
             <div>

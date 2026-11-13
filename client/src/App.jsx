@@ -5,10 +5,9 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingScreen from './components/LoadingScreen';
 import ErrorBoundary from './components/ErrorBoundary';
-import DesktopBanner from './components/DesktopBanner';
 import AIChatWidget from './components/AIChatWidget';
 
-// Lazy-load all pages — Three.js only loads when Home is visited
+// Lazy-load pages
 const Home = lazy(() => import('./pages/Home'));
 const Store = lazy(() => import('./pages/Store'));
 const AppDetail = lazy(() => import('./pages/AppDetail'));
@@ -38,7 +37,6 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <DesktopBanner />
       <main className="flex-1">
         <ErrorBoundary fallback={<LoadingScreen />}>
         <Suspense fallback={<LoadingScreen />}>

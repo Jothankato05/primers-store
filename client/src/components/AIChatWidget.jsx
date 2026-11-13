@@ -54,7 +54,7 @@ export default function AIChatWidget() {
     <>
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-6 right-6 w-14 h-14 text-white rounded-full shadow-xl flex items-center justify-center transition-all duration-200 z-50 hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 w-14 h-14 text-ink rounded-full shadow-xl flex items-center justify-center transition-all duration-200 z-50 hover:scale-105 active:scale-95"
         style={{ background: 'var(--brand)' }}
         aria-label={open ? 'Close app assistant' : 'Open app assistant'}
       >
@@ -69,10 +69,10 @@ export default function AIChatWidget() {
           {/* Header */}
           <div className="px-4 py-3 flex items-center gap-3 shrink-0" style={{ background: 'var(--brand)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}>
-              <MessageCircle className="w-4 h-4 text-white" />
+              <MessageCircle className="w-4 h-4 text-ink" />
             </div>
             <div>
-              <p className="font-semibold text-sm leading-tight text-white">App Assistant</p>
+              <p className="font-semibold text-sm leading-tight text-ink">App Assistant</p>
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>Powered by AI</p>
             </div>
           </div>
@@ -96,7 +96,7 @@ export default function AIChatWidget() {
                           key={app.id}
                           to={`/store/${app.slug}`}
                           onClick={() => setOpen(false)}
-                          className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-white/10"
+                          className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-black/[0.06]"
                           style={{ background: 'rgba(92,124,250,0.15)', color: 'var(--brand-text)', border: '1px solid rgba(92,124,250,0.25)' }}
                         >
                           <span>{app.name}</span>
@@ -136,7 +136,7 @@ export default function AIChatWidget() {
               <button
                 onClick={send}
                 disabled={loading || !input.trim()}
-                className="p-2 text-white rounded-xl transition-colors shrink-0 disabled:opacity-40"
+                className="p-2 text-ink rounded-xl transition-colors shrink-0 disabled:opacity-40"
                 style={{ background: 'var(--brand)' }}
               >
                 <Send className="w-4 h-4" />

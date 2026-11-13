@@ -18,7 +18,7 @@ export default function StarRating({ rating = 0, count = 0, size = 'sm', interac
             className={`${starSize} ${
               s <= Math.round(rating)
                 ? 'text-yellow-400 fill-yellow-400'
-                : 'text-white/20'
+                : 'text-ink/55'
             }`}
           />
         </button>

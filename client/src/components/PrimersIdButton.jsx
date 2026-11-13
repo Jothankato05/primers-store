@@ -11,7 +11,7 @@ export default function PrimersIdButton({ returnTo = '/', label = 'Continue with
         setBusy(true);
         startPrimersSignIn('primers-store', returnTo, signup).catch(() => setBusy(false));
       }}
-      className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+      className="w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90 disabled:opacity-60"
       style={{ background: '#4D78FF' }}
     >
       <svg width="12" height="16" viewBox="0 0 14 18" aria-hidden="true" fill="currentColor">
