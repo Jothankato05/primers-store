@@ -33,6 +33,17 @@ const toJSON = {
   },
 };
 
+// Users never leave the server with secrets on them, however a route serialises them.
+const userToJSON = {
+  transform(doc, ret) {
+    toJSON.transform(doc, ret);
+    delete ret.password_hash;
+    delete ret.verification_token;
+    delete ret.primers_id_sub;
+    return ret;
+  },
+};
+
 const ts = (updated = true) => ({
   timestamps: updated
     ? { createdAt: 'created_at', updatedAt: 'updated_at' }
@@ -51,7 +62,8 @@ const UserSchema = new mongoose.Schema({
   primers_id_sub: { type: String, unique: true, sparse: true },
   avatar_url: String,
   bio: String,
-}, { ...ts(), toJSON });
+  developer_terms_accepted_at: Date,
+}, { ...ts(), toJSON: userToJSON });
 
 const AppSchema = new mongoose.Schema({
   developer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { safeNext } from '../lib/next';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, User } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -8,10 +9,11 @@ import PrimersIdButton from '../components/PrimersIdButton';
 export default function Register() {
   const { user, register } = useAuth();
   const navigate = useNavigate();
+  const next = safeNext(useLocation().search);
   const [form, setForm] = useState({ username: '', email: '', displayName: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
 
-  if (user) return <Navigate to="/" />;
+  if (user) return <Navigate to={next} replace />;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +27,7 @@ export default function Register() {
     try {
       await register(form.username, form.email, form.password, form.displayName);
       toast.success('Account created! Welcome to Primers Store.');
-      navigate('/');
+      navigate(next, { replace: true });
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -54,7 +56,7 @@ export default function Register() {
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <PrimersIdButton label="Sign up with Primers ID" signup />
+          <PrimersIdButton returnTo={next} label="Sign up with Primers ID" signup />
           <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
             <span className="h-px flex-1" style={{ background: 'var(--border, rgba(127,127,127,.25))' }} /> or create a Store password <span className="h-px flex-1" style={{ background: 'var(--border, rgba(127,127,127,.25))' }} />
           </div>
@@ -101,7 +103,7 @@ export default function Register() {
 
           <p className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>
             Already have an account?{' '}
-            <Link to="/login" className="text-primer-400 hover:text-primer-300 font-medium">Sign In</Link>
+            <Link to={`/login${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-primer-400 hover:text-primer-300 font-medium">Sign In</Link>
           </p>
         </form>
       </div>

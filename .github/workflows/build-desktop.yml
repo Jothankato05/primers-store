@@ -35,7 +35,7 @@ jobs:
         working-directory: client
         run: npm run build
         env:
-          VITE_API_URL: https://primers-api-production.up.railway.app/api
+          VITE_API_URL: https://store.primersgroup.ng/api
 
       # 2. Package Electron app into .exe
       - name: Install launcher dependencies
@@ -60,8 +60,8 @@ jobs:
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name || 'desktop-latest' }}
-          name: Primers Store Desktop ${{ github.ref_name || 'latest' }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'desktop-latest' }}
+          name: Primers Store Desktop ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'latest' }}
           draft: false
           prerelease: false
           files: ${{ steps.find.outputs.path }}

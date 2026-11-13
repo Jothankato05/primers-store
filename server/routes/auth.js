@@ -43,6 +43,17 @@ const registerLimiter = rateLimit({
   message: 'Too many accounts created from this address. Please try again later.',
 });
 
+// Owners listed in ADMIN_EMAILS become admins, but only once their email is verified
+// (Primers ID sign-in verifies it), so nobody can claim the role by registering the address.
+const ADMIN_EMAILS = new Set((process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean));
+async function applyOwnerRole(user) {
+  if (user && user.email_verified && user.role !== 'admin' && ADMIN_EMAILS.has(String(user.email).toLowerCase())) {
+    user.role = 'admin';
+    await User.updateOne({ _id: user._id }, { $set: { role: 'admin' } });
+  }
+  return user;
+}
+
 async function createSession(userId) {
   const token = signToken(userId.toString());
   await Session.create({ user_id: userId, token, expires_at: new Date(Date.now() + SESSION_TTL_MS) });
@@ -121,6 +132,7 @@ router.post('/login', async (req, res, next) => {
     }
 
     loginAttempts.delete(ip);
+    await applyOwnerRole(user);
     const token = await createSession(user._id);
 
     res.json({
@@ -190,6 +202,7 @@ router.post('/primers', primersLimiter, async (req, res, next) => {
       }
     }
 
+    await applyOwnerRole(user);
     const token = await createSession(user._id);
     res.json({
       user: {
@@ -219,6 +232,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id, 'username email display_name role email_verified avatar_url bio created_at');
     if (!user) return res.status(404).json({ error: 'User not found' });
+    await applyOwnerRole(user);
     res.json({ user: user.toJSON() });
   } catch (err) {
     next(err);
@@ -241,6 +255,25 @@ router.patch('/profile', requireAuth, async (req, res, next) => {
     await User.updateOne({ _id: req.user.id }, { $set: updates });
     const user = await User.findById(req.user.id, 'username email display_name role email_verified avatar_url bio');
 
+    res.json({ user: user.toJSON() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Become a developer: instant, after accepting the developer terms. Every app still goes
+// through review before it is public, so this only unlocks the publishing tools.
+const devLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: 'Too many attempts. Please try again later.' });
+router.post('/become-developer', devLimiter, requireAuth, async (req, res, next) => {
+  try {
+    if (req.body?.accept_terms !== true) return res.status(400).json({ error: 'Please accept the developer terms first.' });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.role === 'user') {
+      user.role = 'developer';
+      user.developer_terms_accepted_at = new Date();
+      await user.save();
+    }
     res.json({ user: user.toJSON() });
   } catch (err) {
     next(err);

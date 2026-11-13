@@ -118,13 +118,13 @@ export default function Dashboard() {
             </Link>
           )}
           {!isDeveloper && user?.role === 'user' && !showDevApply && (
-            <button onClick={() => setShowDevApply(true)} className="flex items-center justify-between p-3 rounded-lg hover:bg-black/[0.04] transition-colors w-full">
+            <Link to="/developer/join" className="flex items-center justify-between p-3 rounded-lg hover:bg-black/[0.04] transition-colors w-full">
               <div className="flex items-center gap-3">
                 <Edit3 className="w-5 h-5 text-gray-400" />
                 <span className="text-sm">Become a Developer</span>
               </div>
               <ChevronRight className="w-4 h-4 text-gray-400" />
-            </button>
+            </Link>
           )}
         </div>
 

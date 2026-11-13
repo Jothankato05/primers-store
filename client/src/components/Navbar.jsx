@@ -43,7 +43,7 @@ export default function Navbar() {
             <NavLink to="/" end style={linkStyle}>Discover</NavLink>
             <NavLink to="/store" style={linkStyle}>Apps</NavLink>
             <NavLink to="/store?sort=newest" style={() => linkStyle({ isActive: false })}>New</NavLink>
-            <NavLink to={isDeveloper ? '/developer' : '/register'} style={linkStyle}>Developers</NavLink>
+            <NavLink to={'/developer'} style={linkStyle}>Developers</NavLink>
           </div>
 
           <form onSubmit={handleSearch} className="hidden md:block" style={{ marginLeft: 'auto', width: 260, ...noDrag }}>
@@ -113,7 +113,7 @@ export default function Navbar() {
           <form onSubmit={handleSearch} style={{ marginBottom: 8 }}>
             <input type="search" placeholder="Search apps" value={search} onChange={e => setSearch(e.target.value)} maxLength={200} className="input-field" />
           </form>
-          {[['/', 'Discover'], ['/store', 'Apps'], ['/store?sort=newest', 'New'], [isDeveloper ? '/developer' : '/register', 'Developers']].map(([to, label]) => (
+          {[['/', 'Discover'], ['/store', 'Apps'], ['/store?sort=newest', 'New'], ['/developer', 'Developers']].map(([to, label]) => (
             <Link key={label} to={to} onClick={() => setMenuOpen(false)} style={{ display: 'block', padding: '12px 0', borderBottom: '1px solid var(--border-soft)', color: 'var(--text-strong)', textDecoration: 'none', fontSize: '1rem' }}>{label}</Link>
           ))}
           {user ? (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { safeNext } from '../lib/next';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -8,11 +9,12 @@ import PrimersIdButton from '../components/PrimersIdButton';
 export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
+  const next = safeNext(useLocation().search);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (user) return <Navigate to="/" />;
+  if (user) return <Navigate to={next} replace />;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,7 +22,7 @@ export default function Login() {
     try {
       await login(email, password);
       toast.success('Welcome back!');
-      navigate('/');
+      navigate(next, { replace: true });
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -47,7 +49,7 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <PrimersIdButton />
+          <PrimersIdButton returnTo={next} />
           <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
             <span className="h-px flex-1" style={{ background: 'var(--border, rgba(127,127,127,.25))' }} /> or with your Store password <span className="h-px flex-1" style={{ background: 'var(--border, rgba(127,127,127,.25))' }} />
           </div>
@@ -87,7 +89,7 @@ export default function Login() {
 
           <p className="text-center text-sm" style={{ color: 'var(--text-muted)' }}>
             Don't have an account?{' '}
-            <Link to="/register" className="text-primer-400 hover:text-primer-300 font-medium">Register</Link>
+            <Link to={`/register${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-primer-400 hover:text-primer-300 font-medium">Register</Link>
           </p>
 
 

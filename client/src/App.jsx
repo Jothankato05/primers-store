@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -21,12 +21,15 @@ const SubmitApp = lazy(() => import('./pages/SubmitApp'));
 const EditApp = lazy(() => import('./pages/EditApp'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const DeveloperJoin = lazy(() => import('./pages/DeveloperJoin'));
+const Desktop = lazy(() => import('./pages/Desktop'));
 
 function PrivateRoute({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  if (!user) return <Navigate to="/login" />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/" />;
+  const location = useLocation();
+  if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to={roles.includes('developer') ? '/developer/join' : '/'} replace />;
   return children;
 }
 
@@ -56,6 +59,8 @@ export default function App() {
             <Route path="/developer" element={
               <PrivateRoute roles={['developer', 'admin']}><DeveloperDashboard /></PrivateRoute>
             } />
+            <Route path="/developer/join" element={<DeveloperJoin />} />
+            <Route path="/desktop" element={<Desktop />} />
             <Route path="/developer/submit" element={
               <PrivateRoute roles={['developer', 'admin']}><SubmitApp /></PrivateRoute>
             } />

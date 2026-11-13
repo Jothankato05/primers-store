@@ -81,7 +81,7 @@ async function cleanupSessions() {
 app.use(cors({
   origin: (origin, cb) => {
     // Allow no-origin requests and Electron's "null" origin (custom protocol)
-    if (!origin || origin === 'null') return cb(null, true);
+    if (!origin || origin === 'null' || /^primers:\/\//.test(origin)) return cb(null, true);
     const extraOrigin = process.env.CORS_ORIGIN;
     if (
       ALLOWED_ORIGINS.includes(origin) ||
@@ -138,14 +138,42 @@ app.get('/api/health', async (req, res) => {
   res.status(db === 'connected' ? 200 : 503).json({ status: db === 'connected' ? 'ok' : 'degraded', db, timestamp: new Date().toISOString() });
 });
 
-// Desktop app installer download — proxied so users never see the source URL
-const DESKTOP_INSTALLER_URL =
-  process.env.DESKTOP_INSTALLER_URL ||
-  'https://github.com/Jothankato05/primers-store/releases/latest/download/Primers.Store.Setup.1.0.0.exe';
+// Desktop app installer download. Looks up the newest GitHub release that carries a Windows
+// installer, so a new release goes live without a redeploy. With none published yet it sends
+// people to the store's desktop page instead of a GitHub 404.
+const DESKTOP_REPO = process.env.DESKTOP_REPO || 'Jothankato05/primers-store';
+const STORE_URL = process.env.STORE_URL || 'https://store.primersgroup.ng';
+let installerCache = { url: null, at: 0 };
 
-app.get('/api/download/desktop', (req, res) => {
-  res.setHeader('Content-Disposition', 'attachment; filename="Primers-Store-Setup.exe"');
-  res.redirect(302, DESKTOP_INSTALLER_URL);
+async function latestInstallerUrl() {
+  if (process.env.DESKTOP_INSTALLER_URL) return process.env.DESKTOP_INSTALLER_URL;
+  if (Date.now() - installerCache.at < 10 * 60 * 1000) return installerCache.url;
+  let url = null;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${DESKTOP_REPO}/releases?per_page=10`, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'primers-store' },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (r.ok) {
+      const releases = await r.json();
+      for (const rel of releases) {
+        if (rel.draft || rel.prerelease) continue;
+        const exe = (rel.assets || []).find(a => /\.exe$/i.test(a.name));
+        if (exe) { url = exe.browser_download_url; break; }
+      }
+    }
+  } catch (err) {
+    console.error('Desktop release lookup failed:', err.message);
+    if (installerCache.url) return installerCache.url; // keep serving the last good link
+  }
+  installerCache = { url, at: Date.now() };
+  return url;
+}
+
+app.get('/api/download/desktop', async (req, res) => {
+  const url = await latestInstallerUrl();
+  res.setHeader('Cache-Control', 'no-store');
+  res.redirect(302, url || `${STORE_URL}/desktop`);
 });
 
 // Serve React client in production (if built)
