@@ -101,9 +101,14 @@ export default function AppDetail() {
         setInstallProgress(100);
 
         if (app.latest_version?.file_url) {
-          const fileUrl = app.latest_version.file_url;
-          const rawExt = fileUrl.split('.').pop().split('?')[0].toLowerCase();
-          const safeExt = ['exe', 'dmg', 'deb', 'rpm', 'apk', 'zip', 'tar', 'gz', 'msi'].includes(rawExt) ? rawExt : 'exe';
+          let fileUrl = app.latest_version.file_url;
+          // Files in Primers storage are served as an attachment so every browser saves them.
+          try {
+            const u = new URL(fileUrl, window.location.href);
+            if (/\.public\.blob\.vercel-storage\.com$/.test(u.hostname)) { u.searchParams.set('download', '1'); fileUrl = u.toString(); }
+          } catch { /* keep as is */ }
+          const rawExt = fileUrl.split('?')[0].split('.').pop().toLowerCase();
+          const safeExt = ['exe', 'msi', 'msix', 'appx', 'dmg', 'pkg', 'deb', 'rpm', 'appimage', 'apk', 'aab', 'xapk', 'zip', '7z', 'tar', 'gz', 'tgz'].includes(rawExt) ? rawExt : 'exe';
           const link = document.createElement('a');
           link.href = fileUrl;
           link.download = `${app.name}-${app.latest_version.version}.${safeExt}`;

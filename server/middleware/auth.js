@@ -2,8 +2,11 @@ const { Session } = require('../database');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'primers-store-secret-key-change-in-production';
-if (!process.env.JWT_SECRET) console.warn('⚠️  JWT_SECRET not set — using insecure default. Set JWT_SECRET in production.');
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET must be set in production');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'primers-store-dev-only-secret';
+if (!process.env.JWT_SECRET) console.warn('⚠️  JWT_SECRET not set — using a development-only secret.');
 const JWT_EXPIRY = '7d';
 
 async function authMiddleware(req, res, next) {

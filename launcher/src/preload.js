@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // and where to find the API
 contextBridge.exposeInMainWorld('__PRIMERS__', {
   isElectron: true,
-  apiUrl: 'https://primers-api-production.up.railway.app/api',
+  apiUrl: 'https://store.primersgroup.ng/api',
 
   // Native install — real download + silent installer run
   install: (payload) => ipcRenderer.invoke('native:install', payload),

@@ -1,0 +1,12 @@
+{
+  "buildCommand": "echo API only",
+  "installCommand": "npm install --omit=dev",
+  "outputDirectory": "public",
+  "functions": { "api/index.js": { "maxDuration": 30, "includeFiles": "server/**" } },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
+  "headers": [{ "source": "/(.*)", "headers": [
+    { "key": "X-Content-Type-Options", "value": "nosniff" },
+    { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains" },
+    { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+  ] }]
+}

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDropzone } from 'react-dropzone';
 import { Image as ImageIcon, Upload, FileArchive, X, Save, PlusCircle, Trash2, ArrowLeft, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { uploadFile, uploadAppFile, checkAppFile, checkImage } from '../lib/uploads';
 
 const CATEGORIES = ['Productivity', 'Development', 'Design', 'Games', 'Education', 'Business', 'Social', 'Entertainment', 'Utilities', 'Security', 'Health & Fitness', 'Music', 'Photo & Video', 'Finance', 'Other'];
 const PLATFORMS = [
@@ -19,6 +20,7 @@ export default function EditApp() {
   const [app, setApp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState('');
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [form, setForm] = useState({});
   const [newIcon, setNewIcon] = useState(null);
@@ -79,9 +81,13 @@ export default function EditApp() {
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => { if (v !== undefined) formData.append(k, v); });
-      if (newIcon) formData.append('icon', newIcon);
-      if (newBanner) formData.append('banner', newBanner);
-      newScreenshots.forEach(s => formData.append('screenshots', s));
+      if (newIcon) { setProgress('Uploading icon…'); formData.append('icon_url', await uploadFile(newIcon, 'icon')); }
+      if (newBanner) { setProgress('Uploading banner…'); formData.append('banner_url', await uploadFile(newBanner, 'banner')); }
+      for (let i = 0; i < newScreenshots.length; i++) {
+        setProgress(`Uploading screenshot ${i + 1} of ${newScreenshots.length}…`);
+        formData.append('screenshot_urls', await uploadFile(newScreenshots[i], 'screenshot'));
+      }
+      setProgress('Saving…');
 
       const token = localStorage.getItem('primers_token');
       const base = window.__PRIMERS__?.apiUrl || '/api';
@@ -96,7 +102,7 @@ export default function EditApp() {
       toast.success('App updated and resubmitted for review');
       navigate('/developer');
     } catch (e) { toast.error(e.message); }
-    finally { setSaving(false); }
+    finally { setSaving(false); setProgress(''); }
   };
 
   const handleAddVersion = async (e) => {
@@ -107,7 +113,11 @@ export default function EditApp() {
       const formData = new FormData();
       Object.entries(newVersion).forEach(([k, v]) => { if (v) formData.append(k, v); });
       if (newVersionFile) {
-        formData.append('app_file', newVersionFile);
+        const up = await uploadAppFile(newVersionFile, { onProgress: (p) => setProgress(`Uploading ${newVersionFile.name}… ${p}%`) });
+        formData.append('app_file_url', up.url);
+        formData.append('app_file_size', String(up.size));
+        formData.append('app_file_sha256', up.sha256);
+        setProgress('Saving…');
       } else {
         formData.append('external_file_url', versionExternalUrl);
         if (versionExternalSize) formData.append('external_file_size', versionExternalSize);
@@ -131,7 +141,7 @@ export default function EditApp() {
       const appData = await appRes.json();
       setApp(appData.app);
     } catch (e) { toast.error(e.message); }
-    finally { setSaving(false); }
+    finally { setSaving(false); setProgress(''); }
   };
 
   const deleteScreenshot = async (screenshotId) => {
@@ -149,24 +159,27 @@ export default function EditApp() {
   const screenshotsDropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     maxFiles: 10,
-    onDrop: (files) => setNewScreenshots(prev => [...prev, ...files].slice(0, 10)),
+    onDrop: (files) => {
+      const ok = files.filter(f => { const err = checkImage(f, 'screenshot'); if (err) toast.error(`${f.name}: ${err}`); return !err; });
+      setNewScreenshots(prev => [...prev, ...ok].slice(0, 10));
+    },
   });
 
   const iconDropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     maxFiles: 1,
-    onDrop: (files) => setNewIcon(files[0]),
+    onDrop: (files) => { const err = files[0] && checkImage(files[0], 'icon'); if (err) return toast.error(err); setNewIcon(files[0]); },
   });
 
   const bannerDropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     maxFiles: 1,
-    onDrop: (files) => setNewBanner(files[0]),
+    onDrop: (files) => { const err = files[0] && checkImage(files[0], 'banner'); if (err) return toast.error(err); setNewBanner(files[0]); },
   });
 
   const versionFileDropzone = useDropzone({
     maxFiles: 1,
-    onDrop: (files) => setNewVersionFile(files[0]),
+    onDrop: (files) => { const err = files[0] && checkAppFile(files[0]); if (err) return toast.error(err); setNewVersionFile(files[0]); },
   });
 
   if (loading) return <div className="max-w-3xl mx-auto px-4 py-8"><div className="animate-pulse space-y-4"><div className="h-48 bg-gray-200 rounded-xl" /></div></div>;
@@ -299,7 +312,7 @@ export default function EditApp() {
 
         <div className="flex justify-end gap-3">
           <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
-            <Save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save & Resubmit'}
+            <Save className="w-4 h-4" /> {saving ? (progress || 'Saving…') : 'Save & Resubmit'}
           </button>
         </div>
       </form>
@@ -373,7 +386,7 @@ export default function EditApp() {
                     className="input-field" placeholder="https://github.com/.../releases/download/v1.0.0/App.exe" />
                   <input type="number" value={versionExternalSize} onChange={e => setVersionExternalSize(e.target.value)}
                     className="input-field" placeholder="File size in bytes (optional)" />
-                  <p className="text-xs text-gray-500">For files over 500 MB — host on GitHub Releases, Google Drive, etc.</p>
+                  <p className="text-xs text-gray-500">For files hosted elsewhere — host on GitHub Releases, Google Drive, etc.</p>
                 </div>
               ) : (
                 <div {...versionFileDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primer-400">
@@ -387,7 +400,7 @@ export default function EditApp() {
                   ) : (
                     <div className="text-gray-500">
                       <Upload className="w-6 h-6 mx-auto" />
-                      <p className="text-sm mt-1">Drop app file or click (max 500 MB)</p>
+                      <p className="text-sm mt-1">Drop app file or click (up to 4 GB)</p>
                     </div>
                   )}
                 </div>
@@ -395,7 +408,7 @@ export default function EditApp() {
             </div>
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => setShowVersionForm(false)} className="btn-secondary btn-sm">Cancel</button>
-              <button type="submit" disabled={saving} className="btn-primary btn-sm">{saving ? 'Adding...' : 'Add Version'}</button>
+              <button type="submit" disabled={saving} className="btn-primary btn-sm">{saving ? (progress || 'Adding…') : 'Add Version'}</button>
             </div>
           </form>
         )}

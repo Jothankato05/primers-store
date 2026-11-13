@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Upload, Image as ImageIcon, FileArchive, X, PlusCircle, Sparkles } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
+import { uploadFile, uploadAppFile, checkAppFile, checkImage } from '../lib/uploads';
 
 const CATEGORIES = [
   'Productivity', 'Development', 'Design', 'Games', 'Education',
@@ -36,6 +37,7 @@ export default function SubmitApp() {
   const [externalFileUrl, setExternalFileUrl] = useState('');
   const [externalFileSize, setExternalFileSize] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState('');
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
@@ -62,24 +64,27 @@ export default function SubmitApp() {
   const iconDropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     maxFiles: 1,
-    onDrop: (files) => setIcon(files[0]),
+    onDrop: (files) => { const err = files[0] && checkImage(files[0], 'icon'); if (err) return toast.error(err); setIcon(files[0]); },
   });
 
   const bannerDropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     maxFiles: 1,
-    onDrop: (files) => setBanner(files[0]),
+    onDrop: (files) => { const err = files[0] && checkImage(files[0], 'banner'); if (err) return toast.error(err); setBanner(files[0]); },
   });
 
   const screenshotsDropzone = useDropzone({
     accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
     maxFiles: 10,
-    onDrop: (files) => setScreenshots(prev => [...prev, ...files].slice(0, 10)),
+    onDrop: (files) => {
+      const ok = files.filter(f => { const err = checkImage(f, 'screenshot'); if (err) toast.error(`${f.name}: ${err}`); return !err; });
+      setScreenshots(prev => [...prev, ...ok].slice(0, 10));
+    },
   });
 
   const appFileDropzone = useDropzone({
     maxFiles: 1,
-    onDrop: (files) => setAppFile(files[0]),
+    onDrop: (files) => { const err = files[0] && checkAppFile(files[0]); if (err) return toast.error(err); setAppFile(files[0]); },
   });
 
   const handleSubmit = async (e) => {
@@ -108,11 +113,19 @@ export default function SubmitApp() {
 
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => { if (v) formData.append(k, v); });
-      if (icon) formData.append('icon', icon);
-      if (banner) formData.append('banner', banner);
-      screenshots.forEach(s => formData.append('screenshots', s));
+      // Files go straight to storage first; the form then carries their addresses.
+      if (icon) { setProgress('Uploading icon…'); formData.append('icon_url', await uploadFile(icon, 'icon')); }
+      if (banner) { setProgress('Uploading banner…'); formData.append('banner_url', await uploadFile(banner, 'banner')); }
+      for (let i = 0; i < screenshots.length; i++) {
+        setProgress(`Uploading screenshot ${i + 1} of ${screenshots.length}…`);
+        formData.append('screenshot_urls', await uploadFile(screenshots[i], 'screenshot'));
+      }
       if (appFile) {
-        formData.append('app_file', appFile);
+        const up = await uploadAppFile(appFile, { onProgress: (p) => setProgress(`Uploading ${appFile.name}… ${p}%`) });
+        formData.append('app_file_url', up.url);
+        formData.append('app_file_size', String(up.size));
+        formData.append('app_file_sha256', up.sha256);
+        setProgress('Saving your app…');
       } else {
         formData.append('external_file_url', externalFileUrl);
         if (externalFileSize) formData.append('external_file_size', externalFileSize);
@@ -132,6 +145,7 @@ export default function SubmitApp() {
       toast.error(err.message);
     } finally {
       setSubmitting(false);
+      setProgress('');
     }
   };
 
@@ -301,7 +315,7 @@ export default function SubmitApp() {
                   type="number" value={externalFileSize} onChange={e => setExternalFileSize(e.target.value)}
                   className="input-field" placeholder="File size in bytes (optional, e.g. 1640000000 for 1.5 GB)"
                 />
-                <p className="text-xs text-gray-500">Use this for files over 500 MB. Host on GitHub Releases, Google Drive, etc.</p>
+                <p className="text-xs text-gray-500">Only if your app is already hosted elsewhere, such as GitHub Releases. Uploading here is faster for your users.</p>
               </div>
             ) : (
               <div {...appFileDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-primer-400 transition-colors">
@@ -317,7 +331,7 @@ export default function SubmitApp() {
                   <div className="text-gray-500">
                     <FileArchive className="w-8 h-8 mx-auto" />
                     <p className="text-sm mt-2 font-medium">Drop your app file here or click to browse</p>
-                    <p className="text-xs mt-1">ZIP, EXE, DMG, APK, DEB, RPM, etc. (max 500 MB — use External URL for larger files)</p>
+                    <p className="text-xs mt-1">EXE, MSI, ZIP, DMG, PKG, APK, DEB, RPM, AppImage and more, up to 4 GB</p>
                   </div>
                 )}
               </div>
@@ -328,7 +342,7 @@ export default function SubmitApp() {
         <div className="flex items-center gap-3 justify-end">
           <button type="button" onClick={() => navigate('/developer')} className="btn-secondary">Cancel</button>
           <button type="submit" disabled={submitting} className="btn-primary">
-            {submitting ? 'Submitting...' : 'Submit for Review'}
+            {submitting ? (progress || 'Submitting…') : 'Submit for Review'}
           </button>
         </div>
       </form>

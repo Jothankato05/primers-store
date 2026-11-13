@@ -1,45 +1,58 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const mongoose = require('mongoose');
 const { App, AppVersion, AppScreenshot, Review, ReviewVote, Download, AppInstallation, recalcAppRating } = require('../database');
 const { requireAuth, requireDeveloper } = require('../middleware/auth');
 
-const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
+const { ownUploadUrl, removeUpload } = require('../storage');
 
-// Configure multer storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const subDir = file.fieldname === 'icon' ? 'icons' :
-                   file.fieldname === 'banner' ? 'banners' :
-                   file.fieldname === 'screenshots' ? 'screenshots' :
-                   file.fieldname === 'app_file' ? 'app-files' : 'misc';
-    const dir = path.join(UPLOADS_DIR, subDir);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`);
-  },
-});
+// Files go straight from the browser to storage (see routes/uploads.js). These routes take
+// only form fields: the uploaded files arrive as URLs we check belong to the developer.
+const fieldsOnly = multer({ limits: { fields: 60, fieldSize: 64 * 1024, files: 0 } }).none();
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB max for app files
-  fileFilter: (req, file, cb) => {
-    const allowedImages = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (file.fieldname === 'app_file') return cb(null, true);
-    if (['icon', 'banner', 'screenshots'].includes(file.fieldname)) {
-      if (allowedImages.includes(file.mimetype)) return cb(null, true);
-      return cb(new Error('Only image files allowed'));
+const SHA256 = /^[a-f0-9]{64}$/i;
+
+// Screenshot URLs arrive as repeated fields or one JSON array.
+function listField(v) {
+  if (v === undefined || v === null || v === '') return [];
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string' && v.trim().startsWith('[')) { try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch { return null; } }
+  return [v];
+}
+
+// Read the uploaded-file fields of a request. Returns { error } or the checked values.
+function readUploads(body, userId, { withMedia = true, withFile = true } = {}) {
+  const out = {};
+  if (withMedia) {
+    for (const kind of ['icon', 'banner']) {
+      const v = body[`${kind}_url`];
+      if (v) {
+        out[`${kind}_url`] = ownUploadUrl(v, userId, kind);
+        if (!out[`${kind}_url`]) return { error: `The ${kind} upload is not valid. Please upload it again.` };
+      }
     }
-    cb(null, true);
-  },
-});
+    const shots = listField(body.screenshot_urls);
+    if (shots === null || shots.length > 10) return { error: 'Up to 10 screenshots are allowed' };
+    out.screenshots = [];
+    for (const v of shots) {
+      const u = ownUploadUrl(v, userId, 'screenshot');
+      if (!u) return { error: 'A screenshot upload is not valid. Please upload it again.' };
+      out.screenshots.push(u);
+    }
+  }
+  if (withFile && body.app_file_url) {
+    out.app_file_url = ownUploadUrl(body.app_file_url, userId, 'app_file');
+    if (!out.app_file_url) return { error: 'The app file upload is not valid. Please upload it again.' };
+    const size = Number(body.app_file_size);
+    if (!Number.isFinite(size) || size <= 0) return { error: 'app_file_size must be a number' };
+    out.app_file_size = size;
+    if (body.app_file_sha256 && !SHA256.test(body.app_file_sha256)) return { error: 'app_file_sha256 is not a SHA-256 hash' };
+    out.app_file_sha256 = body.app_file_sha256 ? body.app_file_sha256.toLowerCase() : null;
+  }
+  return out;
+}
 
 // Slugs that collide with static /apps/* routes and would make the app unreachable
 const RESERVED_SLUGS = new Set(['categories', 'developer']);
@@ -61,35 +74,6 @@ function isValidHttpUrl(str) {
     const u = new URL(str);
     return u.protocol === 'http:' || u.protocol === 'https:';
   } catch { return false; }
-}
-
-// Delete a local upload file if it's under /uploads/ — path traversal safe
-function deleteUploadFile(urlPath) {
-  if (!urlPath || !urlPath.startsWith('/uploads/')) return;
-  const filePath = path.resolve(UPLOADS_DIR, urlPath.replace(/^\/uploads\//, ''));
-  if (!filePath.startsWith(UPLOADS_DIR + path.sep)) return;
-  try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
-}
-
-// Remove already-saved multer files when a request fails validation afterwards
-function discardUploadedFiles(files) {
-  if (!files) return;
-  for (const list of Object.values(files)) {
-    for (const f of list) {
-      try { fs.unlinkSync(f.path); } catch {}
-    }
-  }
-}
-
-// Stream-based SHA256 — avoids loading large files into memory
-function streamHash(filePath) {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
-    const stream = fs.createReadStream(filePath);
-    stream.on('data', chunk => hash.update(chunk));
-    stream.on('end', () => resolve(hash.digest('hex')));
-    stream.on('error', reject);
-  });
 }
 
 function escapeRegex(str) {
@@ -246,16 +230,10 @@ router.get('/:slug', async (req, res, next) => {
 });
 
 // POST /apps - Create new app (developer only)
-router.post('/', requireAuth, requireDeveloper, upload.fields([
-  { name: 'icon', maxCount: 1 },
-  { name: 'banner', maxCount: 1 },
-  { name: 'screenshots', maxCount: 10 },
-  { name: 'app_file', maxCount: 1 },
-]), async (req, res, next) => {
+router.post('/', requireAuth, requireDeveloper, fieldsOnly, async (req, res, next) => {
   try {
     const { name, description, short_description, category, website, support_email, privacy_url, version, changelog, platform, min_os_version, external_file_url, external_file_size } = req.body;
-
-    const fail = (code, error) => { discardUploadedFiles(req.files); return res.status(code).json({ error }); };
+    const fail = (code, error) => res.status(code).json({ error });
 
     if (!name || !description || !category) return fail(400, 'Name, description, and category are required');
     if (name.length < 2 || name.length > 200) return fail(400, 'App name must be 2–200 characters');
@@ -265,13 +243,12 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
       return fail(400, 'external_file_size must be a number');
     }
     if (version && !/^[a-zA-Z0-9.\-_+]{1,50}$/.test(version)) return fail(400, 'Version format is invalid');
+    const up = readUploads(req.body, req.user.id);
+    if (up.error) return fail(400, up.error);
 
     const baseSlug = slugify(name);
     const slugConflict = await App.findOne({ slug: baseSlug });
     const finalSlug = slugConflict ? `${baseSlug}-${Date.now()}` : baseSlug;
-
-    const icon_url = req.files?.icon?.[0] ? `/uploads/icons/${req.files.icon[0].filename}` : null;
-    const banner_url = req.files?.banner?.[0] ? `/uploads/banners/${req.files.banner[0].filename}` : null;
 
     const newApp = await App.create({
       developer_id: req.user.id,
@@ -280,41 +257,25 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
       description,
       short_description: short_description || description.substring(0, 200),
       category,
-      icon_url,
-      banner_url,
+      icon_url: up.icon_url || null,
+      banner_url: up.banner_url || null,
       website: website || null,
       support_email: support_email || null,
       privacy_url: privacy_url || null,
     });
 
-    if (req.files?.screenshots) {
-      const inserts = req.files.screenshots.map((file, i) => ({
-        app_id: newApp._id,
-        url: `/uploads/screenshots/${file.filename}`,
-        caption: null,
-        sort_order: i,
-      }));
-      await AppScreenshot.insertMany(inserts);
+    if (up.screenshots.length) {
+      await AppScreenshot.insertMany(up.screenshots.map((url, i) => ({ app_id: newApp._id, url, caption: null, sort_order: i })));
     }
 
-    if (version && (req.files?.app_file?.[0] || external_file_url)) {
-      let fileUrl, fileSize, fileHash = null;
-      if (req.files?.app_file?.[0]) {
-        const file = req.files.app_file[0];
-        fileUrl = `/uploads/app-files/${file.filename}`;
-        fileSize = file.size;
-        fileHash = await streamHash(file.path);
-      } else {
-        fileUrl = external_file_url;
-        fileSize = external_file_size ? Number(external_file_size) : null;
-      }
+    if (version && (up.app_file_url || external_file_url)) {
       await AppVersion.create({
         app_id: newApp._id,
         version,
         changelog: changelog || 'Initial release',
-        file_url: fileUrl,
-        file_size: fileSize,
-        file_hash: fileHash,
+        file_url: up.app_file_url || external_file_url,
+        file_size: up.app_file_url ? up.app_file_size : (external_file_size ? Number(external_file_size) : null),
+        file_hash: up.app_file_url ? up.app_file_sha256 : null,
         platform: platform || 'windows',
         min_os_version: min_os_version || null,
       });
@@ -325,19 +286,14 @@ router.post('/', requireAuth, requireDeveloper, upload.fields([
 });
 
 // PATCH /apps/:id - Update app (developer, own apps only)
-router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
-  { name: 'icon', maxCount: 1 },
-  { name: 'banner', maxCount: 1 },
-  { name: 'screenshots', maxCount: 10 },
-]), async (req, res, next) => {
+router.patch('/:id', requireAuth, requireDeveloper, fieldsOnly, async (req, res, next) => {
   try {
     const app = await App.findOne({ _id: req.params.id, developer_id: req.user.id });
-    if (!app) {
-      discardUploadedFiles(req.files);
-      return res.status(404).json({ error: 'App not found or access denied' });
-    }
+    if (!app) return res.status(404).json({ error: 'App not found or access denied' });
 
     const { name, description, short_description, category, website, support_email, privacy_url } = req.body;
+    const up = readUploads(req.body, req.user.id, { withFile: false });
+    if (up.error) return res.status(400).json({ error: up.error });
     const updates = { status: 'pending' };
 
     if (name) {
@@ -352,28 +308,19 @@ router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
     if (website !== undefined) updates.website = website;
     if (support_email !== undefined) updates.support_email = support_email;
     if (privacy_url !== undefined) updates.privacy_url = privacy_url;
-
-    if (req.files?.icon?.[0]) {
-      deleteUploadFile(app.icon_url);
-      updates.icon_url = `/uploads/icons/${req.files.icon[0].filename}`;
-    }
-    if (req.files?.banner?.[0]) {
-      deleteUploadFile(app.banner_url);
-      updates.banner_url = `/uploads/banners/${req.files.banner[0].filename}`;
-    }
+    if (up.icon_url) updates.icon_url = up.icon_url;
+    if (up.banner_url) updates.banner_url = up.banner_url;
 
     await App.updateOne({ _id: app._id }, { $set: updates });
+    if (up.icon_url && app.icon_url !== up.icon_url) removeUpload(app.icon_url);
+    if (up.banner_url && app.banner_url !== up.banner_url) removeUpload(app.banner_url);
 
-    if (req.files?.screenshots) {
+    if (up.screenshots.length) {
+      const count = await AppScreenshot.countDocuments({ app_id: app._id });
+      if (count + up.screenshots.length > 10) return res.status(400).json({ error: 'An app can have up to 10 screenshots. Remove some first.' });
       const lastSS = await AppScreenshot.findOne({ app_id: app._id }).sort({ sort_order: -1 });
       const startOrder = (lastSS?.sort_order ?? -1) + 1;
-      const inserts = req.files.screenshots.map((file, i) => ({
-        app_id: app._id,
-        url: `/uploads/screenshots/${file.filename}`,
-        caption: null,
-        sort_order: startOrder + i,
-      }));
-      await AppScreenshot.insertMany(inserts);
+      await AppScreenshot.insertMany(up.screenshots.map((url, i) => ({ app_id: app._id, url, caption: null, sort_order: startOrder + i })));
     }
 
     const updated = await App.findById(app._id);
@@ -382,21 +329,17 @@ router.patch('/:id', requireAuth, requireDeveloper, upload.fields([
 });
 
 // POST /apps/:id/versions - Add new version
-router.post('/:id/versions', requireAuth, requireDeveloper, upload.fields([
-  { name: 'app_file', maxCount: 1 },
-]), async (req, res, next) => {
+router.post('/:id/versions', requireAuth, requireDeveloper, fieldsOnly, async (req, res, next) => {
   try {
     const app = await App.findOne({ _id: req.params.id, developer_id: req.user.id });
-    if (!app) {
-      discardUploadedFiles(req.files);
-      return res.status(404).json({ error: 'App not found or access denied' });
-    }
+    if (!app) return res.status(404).json({ error: 'App not found or access denied' });
 
     const { version, changelog, platform, min_os_version, external_file_url, external_file_size } = req.body;
+    const fail = (code, error) => res.status(code).json({ error });
+    const up = readUploads(req.body, req.user.id, { withMedia: false });
+    if (up.error) return fail(400, up.error);
 
-    const fail = (code, error) => { discardUploadedFiles(req.files); return res.status(code).json({ error }); };
-
-    if (!version || (!req.files?.app_file?.[0] && !external_file_url)) {
+    if (!version || (!up.app_file_url && !external_file_url)) {
       return fail(400, 'Version and either an app file or external URL are required');
     }
     if (!/^[a-zA-Z0-9.\-_+]{1,50}$/.test(version)) return fail(400, 'Version format is invalid');
@@ -405,24 +348,13 @@ router.post('/:id/versions', requireAuth, requireDeveloper, upload.fields([
       return fail(400, 'external_file_size must be a number');
     }
 
-    let fileUrl, fileSize, fileHash = null;
-    if (req.files?.app_file?.[0]) {
-      const file = req.files.app_file[0];
-      fileUrl = `/uploads/app-files/${file.filename}`;
-      fileSize = file.size;
-      fileHash = await streamHash(file.path);
-    } else {
-      fileUrl = external_file_url;
-      fileSize = external_file_size ? Number(external_file_size) : null;
-    }
-
     await AppVersion.create({
       app_id: app._id,
       version,
       changelog: changelog || '',
-      file_url: fileUrl,
-      file_size: fileSize,
-      file_hash: fileHash,
+      file_url: up.app_file_url || external_file_url,
+      file_size: up.app_file_url ? up.app_file_size : (external_file_size ? Number(external_file_size) : null),
+      file_hash: up.app_file_url ? up.app_file_sha256 : null,
       platform: platform || 'windows',
       min_os_version: min_os_version || null,
     });
@@ -531,10 +463,8 @@ router.delete('/:id/screenshots/:screenshotId', requireAuth, requireDeveloper, a
     const screenshot = await AppScreenshot.findOne({ _id: req.params.screenshotId, app_id: app._id });
     if (!screenshot) return res.status(404).json({ error: 'Screenshot not found' });
 
-    const filePath = path.resolve(UPLOADS_DIR, screenshot.url.replace(/^\/uploads\//, ''));
-    if (filePath.startsWith(UPLOADS_DIR + path.sep) && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-
     await AppScreenshot.deleteOne({ _id: screenshot._id });
+    removeUpload(screenshot.url);
     res.json({ message: 'Screenshot deleted' });
   } catch (err) { next(err); }
 });

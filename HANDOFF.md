@@ -4,6 +4,23 @@
 > **Built for:** Jothankato05
 > **Status:** Live (Vercel + Railway + MongoDB Atlas), 3D storefront, first app (Presona) seeded
 
+## 2026-11-13: Backend moved to Vercel, uploads to Vercel Blob
+
+- The API now runs on Vercel as one serverless function (`api/index.js` loads `server/app.js`;
+  `server/index.js` is still the local server). Vercel project: **primers-store-api**.
+  The storefront (project **primers-store**, root `client/`) rewrites `/api/*` to it.
+- Uploads no longer touch the API. The browser asks `POST /api/uploads/token` for a one-hour token
+  (developer only, size and type limited, path `apps/<developerId>/<kind>/...`), then uploads straight
+  to Vercel Blob in parallel parts (`client/src/lib/uploads.js`). App files: up to 4 GB, SHA-256
+  computed in the browser and stored with the version. Icons 2 MB, banners and screenshots 5 MB.
+- App routes take `icon_url`, `banner_url`, `screenshot_urls`, `app_file_url`, `app_file_size`,
+  `app_file_sha256`, and only accept URLs from the developer's own upload folder.
+- Downloads come straight from the Blob CDN (`?download=1` forces a save).
+- Production refuses to start without `JWT_SECRET`, and never seeds public demo passwords.
+- Env on primers-store-api: `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`,
+  `BLOB_READ_WRITE_TOKEN` (from the connected Blob store), optional `ADMIN_PASSWORD`, AI gateway vars.
+- Railway is no longer needed once primers-store-api is live.
+
 ---
 
 ## Quick Links
