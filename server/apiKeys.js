@@ -43,12 +43,18 @@ async function checkKey(key) {
 
 // What an API key may reach: app and upload routes only, never accounts, sessions or admin.
 function allowedForKey(req, scopes) {
-  const p = req.path || req.originalUrl || '';
-  const write = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
-  const storeRoute = p.startsWith('/api/apps') || p.startsWith('/api/uploads') || p === '/api/auth/me';
-  if (!storeRoute) return false;
-  if (write) return scopes.includes('store.publish');
-  return scopes.includes('store.read') || scopes.includes('store.publish');
+  const p = (req.path || req.originalUrl || '').replace(/\/+$/, '');
+  const m = req.method;
+  const has = (x) => scopes.includes(x);
+  if (m === 'GET' || m === 'HEAD') {
+    const read = p === '/api/auth/me' || p === '/api/apps' || p === '/api/apps/categories' || p === '/api/apps/developer/mine'
+      || /^\/api\/apps\/[^/]+(\/manage|\/reviews)?$/.test(p);
+    return read && (has('store.read') || has('store.publish'));
+  }
+  // Writes: publishing only. Reviews, votes, installs and account changes need the person signed in.
+  const publish = (m === 'POST' && (p === '/api/apps' || p === '/api/uploads/token' || /^\/api\/apps\/[^/]+\/versions$/.test(p)))
+    || (m === 'PATCH' && /^\/api\/apps\/[^/]+$/.test(p));
+  return publish && has('store.publish');
 }
 
 module.exports = { looksLikeKey, checkKey, allowedForKey };

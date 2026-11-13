@@ -11,6 +11,10 @@ test('API keys reach only app and upload routes, within their permissions', () =
   assert.equal(allowedForKey(req('GET', '/api/admin/stats'), ['store.publish']), false);
   assert.equal(allowedForKey(req('PATCH', '/api/auth/profile'), ['store.publish']), false);
   assert.equal(allowedForKey(req('GET', '/api/apps'), ['profile.read']), false);
+  assert.equal(allowedForKey(req('POST', '/api/apps/some-app/reviews'), ['store.publish']), false);
+  assert.equal(allowedForKey(req('POST', '/api/apps/some-app/install'), ['store.publish']), false);
+  assert.equal(allowedForKey(req('PATCH', '/api/apps/abc123'), ['store.publish']), true);
+  assert.equal(allowedForKey(req('POST', '/api/apps/abc123/versions'), ['store.publish']), true);
 });
 test('malformed keys are refused without asking Primers ID', async () => {
   assert.equal(looksLikeKey('prm_live_x'), true);
