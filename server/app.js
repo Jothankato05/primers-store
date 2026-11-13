@@ -4,7 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const fs = require('fs');
 const { authMiddleware } = require('./middleware/auth');
-const { connectDb, dbState, hashPassword, User, App, AppVersion, Session } = require('./database');
+const { connectDb, dbState, hashPassword, verifyPassword, User, App, AppVersion, Session } = require('./database');
 
 const app = express();
 
@@ -70,7 +70,26 @@ async function autoSeed() {
 
 // Keep first-party app branding current (idempotent, one cheap query per instance).
 const PRESONA_ICON = `${process.env.STORE_URL || 'https://store.primersgroup.ng'}/brand/presona-icon.png`;
+// Any account still on a publicly known demo password gets a random one and is signed out
+// everywhere. Runs once per instance; a no-op once the passwords have changed.
+const PUBLIC_DEMO_PASSWORDS = { 'admin@primers.store': ['admin123'], 'dev@primers.store': ['dev123456'], 'user@primers.store': ['user123456'] };
+async function retirePublicPasswords() {
+  if (process.env.NODE_ENV !== 'production') return;
+  for (const [email, known] of Object.entries(PUBLIC_DEMO_PASSWORDS)) {
+    try {
+      const u = await User.findOne({ email });
+      if (!u || !known.some(pw => verifyPassword(pw, u.password_hash))) continue;
+      await User.updateOne({ _id: u._id }, { $set: { password_hash: hashPassword(crypto.randomBytes(32).toString('base64url')) } });
+      await Session.deleteMany({ user_id: u._id });
+      console.log(`🔒 Retired the public demo password on ${email}`);
+    } catch (e) {
+      console.error('Demo password check failed:', e.message);
+    }
+  }
+}
+
 async function brandFixes() {
+  await retirePublicPasswords();
   try {
     await App.updateOne({ slug: 'presona', icon_url: { $ne: PRESONA_ICON } }, { $set: { icon_url: PRESONA_ICON } });
   } catch (e) {
