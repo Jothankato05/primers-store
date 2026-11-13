@@ -166,7 +166,7 @@
     content: '';
     position: absolute; inset: 0;
     border-radius: inherit; padding: 1px;
-    background: linear-gradient(135deg, rgba(92,124,250,0.4), rgba(168,85,247,0.4));
+    background: linear-gradient(135deg, rgba(47,87,232,0.45), rgba(36,71,201,0.45));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
     opacity: 0; transition: opacity 0.3s; pointer-events: none;

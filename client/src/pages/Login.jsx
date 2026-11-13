@@ -34,16 +34,7 @@ export default function Login() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <svg width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto' }}>
-            <defs>
-              <linearGradient id="loginLogoGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#748ffc" />
-                <stop offset="100%" stopColor="#a855f7" />
-              </linearGradient>
-            </defs>
-            <rect width="32" height="32" rx="8" fill="url(#loginLogoGrad)" />
-            <text x="8" y="24" fontFamily="Quicksand, Manrope, sans-serif" fontWeight="700" fontSize="20" fill="white">P</text>
-          </svg>
+          <img src="/primers-mark.png" alt="Primers" width="34" height="47" style={{ width: 34, height: 'auto', margin: '0 auto' }} />
           <h1 className="mt-4 text-2xl font-bold" style={{ color: 'var(--text-strong)' }}>Welcome back</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Sign in to your Primers Store account</p>
         </div>
