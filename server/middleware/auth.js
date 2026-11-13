@@ -1,4 +1,5 @@
-const { Session } = require('../database');
+const { Session, User } = require('../database');
+const { looksLikeKey, checkKey, allowedForKey } = require('../apiKeys');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
@@ -17,6 +18,25 @@ async function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.split(' ')[1];
+
+  // Primers API key: act as the key's owner, limited to the key's permissions.
+  if (looksLikeKey(token)) {
+    try {
+      const r = await checkKey(token);
+      if (r.unavailable) return res.status(503).json({ error: 'API keys are temporarily unavailable. Try again shortly.' });
+      if (!r.active || !r.sub) return res.status(401).json({ error: 'This API key is not valid, has expired or was revoked.' });
+      const u = await User.findOne({ primers_id_sub: r.sub });
+      if (!u) return res.status(401).json({ error: 'Sign in to Primers Store once with Primers ID before using an API key here.' });
+      const scopes = Array.isArray(r.scopes) ? r.scopes : [];
+      if (!allowedForKey(req, scopes)) return res.status(403).json({ error: 'This API key does not have permission for that.' });
+      req.user = { id: u._id.toString(), username: u.username, email: u.email, display_name: u.display_name,
+        role: u.role === 'admin' ? 'developer' : u.role, email_verified: u.email_verified };
+      req.apiKey = { id: r.key_id, scopes, env: r.env };
+      return next();
+    } catch (err) {
+      return next(err);
+    }
+  }
 
   // A bad/expired token means "anonymous", but a database failure must surface
   // as a 5xx — otherwise a transient outage would masquerade as a logout.
