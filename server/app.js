@@ -68,6 +68,16 @@ async function autoSeed() {
   }
 }
 
+// Keep first-party app branding current (idempotent, one cheap query per instance).
+const PRESONA_ICON = `${process.env.STORE_URL || 'https://store.primersgroup.ng'}/brand/presona-icon.png`;
+async function brandFixes() {
+  try {
+    await App.updateOne({ slug: 'presona', icon_url: { $ne: PRESONA_ICON } }, { $set: { icon_url: PRESONA_ICON } });
+  } catch (e) {
+    console.error('Brand update skipped:', e.message);
+  }
+}
+
 async function cleanupSessions() {
   try {
     const result = await Session.deleteMany({ expires_at: { $lt: new Date() } });
@@ -105,7 +115,7 @@ let ready = null;
 let lastCleanup = 0;
 function ensureDb() {
   if (!ready) {
-    ready = (async () => { await connectDb(); await autoSeed(); })().catch(err => { ready = null; throw err; });
+    ready = (async () => { await connectDb(); await autoSeed(); await brandFixes(); })().catch(err => { ready = null; throw err; });
   }
   return ready;
 }
