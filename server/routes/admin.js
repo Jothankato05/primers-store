@@ -87,7 +87,12 @@ router.get('/apps', async (req, res, next) => {
     const offset = toInt(req.query.offset, 0);
 
     const filter = {};
-    if (status && typeof status === 'string') filter.status = status;
+    if (status === 'versions_pending') {
+      // Apps of any status with a version waiting for review
+      filter._id = { $in: await AppVersion.distinct('app_id', { status: 'pending' }) };
+    } else if (status && typeof status === 'string') {
+      filter.status = status;
+    }
     if (category && typeof category === 'string') filter.category = category;
     if (search && typeof search === 'string') {
       const re = new RegExp(escapeRegex(search), 'i');
@@ -101,6 +106,14 @@ router.get('/apps', async (req, res, next) => {
       .limit(limit)
       .populate('developer_id', 'username email display_name');
 
+    // How many of each app's versions wait for review: an approved app's new
+    // version is otherwise easy to miss, and it isn't downloadable until approved
+    const waiting = await AppVersion.aggregate([
+      { $match: { status: 'pending', app_id: { $in: docs.map(d => d._id) } } },
+      { $group: { _id: '$app_id', n: { $sum: 1 } } },
+    ]);
+    const pendingVersions = new Map(waiting.map(w => [String(w._id), w.n]));
+
     const apps = docs.map(d => {
       const obj = d.toJSON();
       if (obj.developer_id && typeof obj.developer_id === 'object') {
@@ -108,6 +121,7 @@ router.get('/apps', async (req, res, next) => {
         obj.developer_email = obj.developer_id.email;
         obj.developer_id = obj.developer_id.id;
       }
+      obj.pending_versions = pendingVersions.get(String(d._id)) || 0;
       return obj;
     });
 
@@ -193,10 +207,11 @@ router.patch('/apps/:id/versions/:versionId/review', async (req, res, next) => {
 
     const version = await AppVersion.findOneAndUpdate(
       { _id: req.params.versionId, app_id: req.params.id },
-      { status }
+      { status },
+      { new: true }
     );
     if (!version) return res.status(404).json({ error: 'Version not found' });
-    res.json({ message: `Version ${status}` });
+    res.json({ message: `Version ${status}`, version: version.toJSON() });
   } catch (err) { next(err); }
 });
 
@@ -214,7 +229,12 @@ router.get('/developer-applications', async (req, res, next) => {
   try {
     const { status } = req.query;
     const filter = {};
-    if (status && typeof status === 'string') filter.status = status;
+    if (status === 'versions_pending') {
+      // Apps of any status with a version waiting for review
+      filter._id = { $in: await AppVersion.distinct('app_id', { status: 'pending' }) };
+    } else if (status && typeof status === 'string') {
+      filter.status = status;
+    }
 
     const docs = await DeveloperApplication.find(filter)
       .sort({ created_at: -1 })

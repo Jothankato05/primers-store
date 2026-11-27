@@ -100,6 +100,23 @@ export default function AdminDashboard() {
     } catch (e) { toast.error(e.message); }
   };
 
+  // A version is only offered for download once approved (the app's page shows
+  // its latest approved version), so each version is reviewed on its own
+  const reviewVersion = async (appId, versionId, status) => {
+    if (status === 'rejected' && !confirm('Reject this version? It will not be offered for download.')) return;
+    try {
+      await apiRequest(`/admin/apps/${appId}/versions/${versionId}/review`, {
+        method: 'PATCH', body: JSON.stringify({ status }),
+      });
+      toast.success(`Version ${status}`);
+      setAppDetail(prev => prev && prev.id === appId
+        ? { ...prev, versions: prev.versions.map(v => (v.id === versionId ? { ...v, status } : v)) }
+        : prev);
+      loadApps();
+      fetch(`${base}/admin/dashboard`, { headers }).then(r => r.json()).then(d => setStats(d.stats)).catch(() => {});
+    } catch (e) { toast.error(e.message); }
+  };
+
   const [appDetail, setAppDetail] = useState(null);
   const [editingVersionUrl, setEditingVersionUrl] = useState({});
 
@@ -186,6 +203,7 @@ export default function AdminDashboard() {
             </form>
             <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); loadApps(e.target.value, searchTerm); }} className="input-field w-auto">
               <option value="pending">Pending</option>
+              <option value="versions_pending">Versions to review</option>
               <option value="reviewing">Reviewing</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
@@ -219,6 +237,11 @@ export default function AdminDashboard() {
                             'bg-gray-100 text-gray-700'
                           }`}>{app.status}</span>
                           <span className="text-xs text-gray-400">{app.category}</span>
+                          {app.pending_versions > 0 && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700">
+                              {app.pending_versions} version{app.pending_versions === 1 ? '' : 's'} to review
+                            </span>
+                          )}
                           {app.review_notes && <span className="text-xs text-gray-500 italic">— {app.review_notes}</span>}
                         </div>
                       </div>
@@ -417,6 +440,23 @@ export default function AdminDashboard() {
                       <p className="text-xs text-gray-500">
                         Size: {v.file_size ? `${(v.file_size / 1024 / 1024).toFixed(1)} MB` : 'unknown'}
                       </p>
+                      {v.status !== 'approved' && (
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                          Not offered for download until approved. Check the download link works first.
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        {v.status !== 'approved' && (
+                          <button onClick={() => reviewVersion(appDetail.id, v.id, 'approved')} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700">
+                            Approve version
+                          </button>
+                        )}
+                        {v.status !== 'rejected' && (
+                          <button onClick={() => reviewVersion(appDetail.id, v.id, 'rejected')} className="btn-danger btn-sm">
+                            Reject version
+                          </button>
+                        )}
+                      </div>
                       <div className="space-y-1">
                         <label className="text-xs font-medium text-gray-600">Download URL</label>
                         <input
