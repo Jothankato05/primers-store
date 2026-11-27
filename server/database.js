@@ -9,12 +9,12 @@ if (!process.env.MONGODB_URI) {
 async function connectDb() {
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 15000, ...(process.env.MONGODB_DB ? { dbName: process.env.MONGODB_DB } : {}) });
-    console.log('✅ MongoDB connected');
+    console.log('MongoDB connected');
     // Surface index-build failures (e.g. duplicate data vs a unique index) instead
     // of letting uniqueness silently go unenforced
     await Promise.all(
       Object.values(mongoose.models).map(m =>
-        m.init().catch(e => console.error(`⚠️  Index build failed for ${m.modelName}:`, e.message))
+        m.init().catch(e => console.error(`Index build failed for ${m.modelName}:`, e.message))
       )
     );
   }

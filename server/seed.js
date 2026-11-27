@@ -14,7 +14,7 @@ async function seed() {
   for (const acc of accounts) {
     const existing = await User.findOne({ email: acc.email });
     if (existing) {
-      console.log(`ℹ️  ${acc.email} already exists`);
+      console.log(`${acc.email} already exists`);
       continue;
     }
     await User.create({
@@ -25,10 +25,10 @@ async function seed() {
       role: acc.role,
       email_verified: true,
     });
-    console.log(`✅ ${acc.role} account created: ${acc.email}`);
+    console.log(`${acc.role} account created: ${acc.email}`);
   }
 
-  console.log('🌱 Seed complete!');
+  console.log('Seed complete!');
   process.exit(0);
 }
 

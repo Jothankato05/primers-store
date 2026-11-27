@@ -33,7 +33,7 @@ async function autoSeed() {
     if (adminPassword) {
       await User.create({ username: 'admin', email: process.env.ADMIN_EMAIL || 'admin@primers.store', password_hash: hashPassword(adminPassword), display_name: 'Primers Admin', role: 'admin', email_verified: true });
     } else {
-      console.warn('⚠️  No ADMIN_PASSWORD set: no admin account seeded. Set it and redeploy to create one.');
+      console.warn('No ADMIN_PASSWORD set: no admin account seeded. Set it and redeploy to create one.');
     }
     await User.create({ username: 'demo-dev', email: 'dev@primers.store', password_hash: hashPassword(prod ? random() : 'dev123456'), display_name: 'Primers Group', role: 'developer', email_verified: true });
     if (!prod) await User.create({ username: 'demo-user', email: 'user@primers.store', password_hash: hashPassword('user123456'), display_name: 'Demo User', role: 'user', email_verified: true });
@@ -81,7 +81,7 @@ async function retirePublicPasswords() {
       if (!u || !known.some(pw => verifyPassword(pw, u.password_hash))) continue;
       await User.updateOne({ _id: u._id }, { $set: { password_hash: hashPassword(crypto.randomBytes(32).toString('base64url')) } });
       await Session.deleteMany({ user_id: u._id });
-      console.log(`🔒 Retired the public demo password on ${email}`);
+      console.log(`Retired the public demo password on ${email}`);
     } catch (e) {
       console.error('Demo password check failed:', e.message);
     }
@@ -100,7 +100,7 @@ async function brandFixes() {
 async function cleanupSessions() {
   try {
     const result = await Session.deleteMany({ expires_at: { $lt: new Date() } });
-    if (result.deletedCount > 0) console.log(`🧹 Removed ${result.deletedCount} expired sessions`);
+    if (result.deletedCount > 0) console.log(`Removed ${result.deletedCount} expired sessions`);
   } catch (e) {
     console.error('Session cleanup error:', e.message);
   }
