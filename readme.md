@@ -1,6 +1,6 @@
 #  Primers Store
 
-A full-featured app store platform built from scratch — upload, verify, and distribute applications. Think Microsoft Store, but Primers-branded.
+A full-featured app store platform built from scratch - upload, verify, and distribute applications. Think Microsoft Store, but Primers-branded.
 
 ## Features
 
@@ -95,34 +95,34 @@ primers-store/
 ## API Endpoints
 
 ### Auth
-- `POST /api/auth/register` — Register
-- `POST /api/auth/login` — Login
-- `GET /api/auth/me` — Current user
-- `PATCH /api/auth/profile` — Update profile
-- `POST /api/auth/apply-developer` — Apply for developer role
+- `POST /api/auth/register` - Register
+- `POST /api/auth/login` - Login
+- `GET /api/auth/me` - Current user
+- `PATCH /api/auth/profile` - Update profile
+- `POST /api/auth/apply-developer` - Apply for developer role
 
 ### Apps (Public)
-- `GET /api/apps` — List apps (supports ?search, ?category, ?sort)
-- `GET /api/apps/categories` — List categories
-- `GET /api/apps/:slug` — App detail with reviews
-- `POST /api/apps/:slug/reviews` — Submit review
-- `POST /api/apps/:id/download` — Track download
+- `GET /api/apps` - List apps (supports ?search, ?category, ?sort)
+- `GET /api/apps/categories` - List categories
+- `GET /api/apps/:slug` - App detail with reviews
+- `POST /api/apps/:slug/reviews` - Submit review
+- `POST /api/apps/:id/download` - Track download
 
 ### Developer
-- `GET /api/apps/developer/mine` — Developer's apps
-- `POST /api/apps` — Create app (FormData with files)
-- `PATCH /api/apps/:id` — Update app
-- `POST /api/apps/:id/versions` — Add new version
+- `GET /api/apps/developer/mine` - Developer's apps
+- `POST /api/apps` - Create app (FormData with files)
+- `PATCH /api/apps/:id` - Update app
+- `POST /api/apps/:id/versions` - Add new version
 
 ### Admin
-- `GET /api/admin/dashboard` — Stats
-- `GET /api/admin/apps` — All apps with filters
-- `PATCH /api/admin/apps/:id/review` — Approve/reject app
-- `GET /api/admin/users` — User list
-- `PATCH /api/admin/users/:id/role` — Change user role
-- `GET /api/admin/developer-applications` — Dev applications
-- `PATCH /api/admin/developer-applications/:id/review` — Review dev app
-- `DELETE /api/admin/reviews/:id` — Remove review
+- `GET /api/admin/dashboard` - Stats
+- `GET /api/admin/apps` - All apps with filters
+- `PATCH /api/admin/apps/:id/review` - Approve/reject app
+- `GET /api/admin/users` - User list
+- `PATCH /api/admin/users/:id/role` - Change user role
+- `GET /api/admin/developer-applications` - Dev applications
+- `PATCH /api/admin/developer-applications/:id/review` - Review dev app
+- `DELETE /api/admin/reviews/:id` - Remove review
 
 ## License
 

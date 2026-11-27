@@ -48,7 +48,7 @@ export function AuthProvider({ children }) {
       apiRequest('/auth/me')
         .then(data => setUser(data.user))
         .catch(err => {
-          // Only discard the token when the server rejected it — a network blip
+          // Only discard the token when the server rejected it - a network blip
           // or temporary outage must not log the user out of this device
           if (err.status === 401) localStorage.removeItem('primers_token');
         })

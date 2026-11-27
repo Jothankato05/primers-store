@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Primers Store — Card
+ * Primers Store - Card
  * The core surface: a #13131a panel with a hairline border. Optional
  * `glass` frosting, `glow` brand border on hover, and `interactive` lift.
  */

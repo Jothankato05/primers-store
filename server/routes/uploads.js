@@ -6,7 +6,7 @@ const { rateLimit } = require('../middleware/rateLimit');
 
 const tokenLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 120, message: 'Too many uploads. Please wait a few minutes and try again.' });
 
-// POST /api/uploads/token — { kind, filename, size, contentType } → { token, pathname }
+// POST /api/uploads/token - { kind, filename, size, contentType } → { token, pathname }
 // The browser then uploads the file straight to storage with this token.
 router.post('/token', tokenLimiter, requireAuth, requireDeveloper, async (req, res, next) => {
   try {

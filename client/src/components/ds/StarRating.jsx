@@ -8,7 +8,7 @@ const Star = ({ size, fill, stroke }) => (
 );
 
 /**
- * Primers Store — StarRating
+ * Primers Store - StarRating
  * Five amber stars. Read-only by default; pass `interactive` + `onChange`
  * to collect a review rating.
  */

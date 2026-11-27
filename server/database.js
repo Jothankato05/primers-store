@@ -3,7 +3,7 @@ const crypto = require('crypto');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/primers_store';
 if (!process.env.MONGODB_URI) {
-  console.warn('⚠️  MONGODB_URI not set — falling back to mongodb://localhost:27017/primers_store. Set MONGODB_URI in production.');
+  console.warn('MONGODB_URI not set, falling back to mongodb://localhost:27017/primers_store. Set MONGODB_URI in production.');
 }
 
 async function connectDb() {

@@ -57,7 +57,7 @@ function readUploads(body, userId, { withMedia = true, withFile = true } = {}) {
 // Slugs that collide with static /apps/* routes and would make the app unreachable
 const RESERVED_SLUGS = new Set(['categories', 'developer']);
 
-// Slugify — normalize Unicode, strip diacritics, fall back to timestamp for all-non-ASCII names
+// Slugify - normalize Unicode, strip diacritics, fall back to timestamp for all-non-ASCII names
 function slugify(text) {
   const slug = text.toLowerCase()
     .normalize('NFKD')
@@ -80,7 +80,7 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Coerce a query param to a bounded integer (NaN-safe — ?limit=abc must not crash the driver)
+// Coerce a query param to a bounded integer (NaN-safe - ?limit=abc must not crash the driver)
 function toInt(value, fallback, max) {
   const n = Number.parseInt(value, 10);
   if (!Number.isFinite(n) || n < 0) return fallback;

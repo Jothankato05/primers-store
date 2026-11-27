@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Primers Store — Input
+ * Primers Store - Input
  * Frosted field with optional leading icon and a brand focus ring.
  */
 export function Input({

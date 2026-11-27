@@ -1,4 +1,4 @@
-# Primers Store — Full Project Handoff
+# Primers Store - Full Project Handoff
 
 > **Last updated:** 2026-07-02
 > **Built for:** Jothankato05
@@ -44,7 +44,7 @@
 | User | `user@primers.store` | `user123456` |
 
 These auto-seed on first run (server/index.js `autoSeed()` function).
-**Change the admin password after first login** — these credentials are public in this repo.
+**Change the admin password after first login** - these credentials are public in this repo.
 
 ---
 
@@ -83,7 +83,7 @@ These auto-seed on first run (server/index.js `autoSeed()` function).
 ┌─────────────────────────────────────────────────────┐
 │               MONGODB ATLAS (Database)               │
 │           primersstore.07ocypu.mongodb.net            │
-│   Free M0 tier — persistent, survives redeploys      │
+│   Free M0 tier - persistent, survives redeploys      │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -105,7 +105,7 @@ primers-store/
 │   │   ├── apps.js            # App CRUD, reviews, downloads, versions, screenshots
 │   │   ├── admin.js           # Admin dashboard, app review, user management
 │   │   └── ai.js              # AI chat assistant, description generator, moderation
-│   └── uploads/               # Uploaded files (⚠ ephemeral on Railway — see Known Issues)
+│   └── uploads/               # Uploaded files (⚠ ephemeral on Railway - see Known Issues)
 ├── client/                    # React frontend
 │   ├── .npmrc                 # legacy-peer-deps=true (required for Three.js)
 │   ├── vercel.json            # SPA rewrites + API proxy
@@ -123,54 +123,54 @@ primers-store/
 
 ## Database Schema
 
-**MongoDB (Mongoose models)** — ids are ObjectId strings exposed as `id` in API responses:
-- `User` — roles: user/developer/admin, PBKDF2 password hashing
-- `App` — status: pending/reviewing/approved/rejected/suspended/removed, slug-based URLs
-- `AppVersion` — file tracking with SHA256 hashes
-- `AppScreenshot` — ordered screenshots per app
-- `Review` — 1-5 star ratings, unique per (app, user)
-- `ReviewVote` — upvote/downvote per review, unique per (review, user)
-- `Download` — download tracking with IP/user agent
-- `DeveloperApplication` — request developer role with admin approval
-- `Session` — JWT session tokens with expiry (cleaned hourly)
-- `AppInstallation` — per-user installed apps, unique per (user, app)
+**MongoDB (Mongoose models)** - ids are ObjectId strings exposed as `id` in API responses:
+- `User` - roles: user/developer/admin, PBKDF2 password hashing
+- `App` - status: pending/reviewing/approved/rejected/suspended/removed, slug-based URLs
+- `AppVersion` - file tracking with SHA256 hashes
+- `AppScreenshot` - ordered screenshots per app
+- `Review` - 1-5 star ratings, unique per (app, user)
+- `ReviewVote` - upvote/downvote per review, unique per (review, user)
+- `Download` - download tracking with IP/user agent
+- `DeveloperApplication` - request developer role with admin approval
+- `Session` - JWT session tokens with expiry (cleaned hourly)
+- `AppInstallation` - per-user installed apps, unique per (user, app)
 
 ## API Endpoints
 
 ### Public
-- `GET /api/health` — Health check (reports `db` connection state; 503 while degraded)
-- `POST /api/auth/register` — { username, email, password, display_name } (rate limited)
-- `POST /api/auth/login` — { email, password } → { user, token } (brute-force protected)
-- `GET /api/apps` — List approved apps (?search, ?category, ?sort, ?limit, ?offset)
-- `GET /api/apps/categories` — Category list with counts
-- `GET /api/apps/:slug` — App detail + reviews + screenshots + latest_version
-- `POST /api/apps/:id/download` — Track download
-- `GET /api/apps/:slug/reviews` — Get reviews for app
-- `POST /api/ai/chat` — AI app discovery assistant (rate limited)
+- `GET /api/health` - Health check (reports `db` connection state; 503 while degraded)
+- `POST /api/auth/register` - { username, email, password, display_name } (rate limited)
+- `POST /api/auth/login` - { email, password } → { user, token } (brute-force protected)
+- `GET /api/apps` - List approved apps (?search, ?category, ?sort, ?limit, ?offset)
+- `GET /api/apps/categories` - Category list with counts
+- `GET /api/apps/:slug` - App detail + reviews + screenshots + latest_version
+- `POST /api/apps/:id/download` - Track download
+- `GET /api/apps/:slug/reviews` - Get reviews for app
+- `POST /api/ai/chat` - AI app discovery assistant (rate limited)
 
 ### Authenticated (any user)
-- `GET /api/auth/me` — Current user
-- `PATCH /api/auth/profile` — Update display_name, bio, avatar_url
-- `POST /api/auth/logout` — Invalidate session
-- `POST /api/auth/apply-developer` — Request developer role
-- `POST /api/apps/:slug/reviews` — Submit review
-- `POST /api/apps/:slug/reviews/:reviewId/vote` — Helpful vote
-- `POST/DELETE /api/apps/:slug/install` — Install/uninstall tracking
+- `GET /api/auth/me` - Current user
+- `PATCH /api/auth/profile` - Update display_name, bio, avatar_url
+- `POST /api/auth/logout` - Invalidate session
+- `POST /api/auth/apply-developer` - Request developer role
+- `POST /api/apps/:slug/reviews` - Submit review
+- `POST /api/apps/:slug/reviews/:reviewId/vote` - Helpful vote
+- `POST/DELETE /api/apps/:slug/install` - Install/uninstall tracking
 
 ### Developer
-- `GET /api/apps/developer/mine` — Developer's apps
-- `POST /api/apps` — Create app (multipart: name, description, category, icon, screenshots, app_file)
-- `PATCH /api/apps/:id` — Update app + media
-- `POST /api/apps/:id/versions` — Add new version with file
-- `POST /api/ai/generate-description` — AI short-description generator
-- `POST /api/ai/moderate` — AI content moderation (fails open)
+- `GET /api/apps/developer/mine` - Developer's apps
+- `POST /api/apps` - Create app (multipart: name, description, category, icon, screenshots, app_file)
+- `PATCH /api/apps/:id` - Update app + media
+- `POST /api/apps/:id/versions` - Add new version with file
+- `POST /api/ai/generate-description` - AI short-description generator
+- `POST /api/ai/moderate` - AI content moderation (fails open)
 
 ### Admin
-- `GET /api/admin/dashboard` — Stats overview
-- `GET/PATCH/DELETE /api/admin/apps` — App review management
-- `GET/PATCH /api/admin/users` — User management + role changes
-- `GET/PATCH /api/admin/developer-applications` — Dev application review
-- `GET/DELETE /api/admin/reviews` — Review moderation
+- `GET /api/admin/dashboard` - Stats overview
+- `GET/PATCH/DELETE /api/admin/apps` - App review management
+- `GET/PATCH /api/admin/users` - User management + role changes
+- `GET/PATCH /api/admin/developer-applications` - Dev application review
+- `GET/DELETE /api/admin/reviews` - Review moderation
 
 ## Known Issues
 
@@ -212,14 +212,14 @@ are unaffected.
   - `JWT_SECRET` = long random string (sessions invalidate if this changes)
   - `NODE_ENV` = `production`
 - **Environment Variables (optional):**
-  - `ADMIN_PASSWORD` / `ADMIN_EMAIL` — override the seeded admin account
-  - `CORS_ORIGIN` — extra allowed origin beyond `primers-store*.vercel.app`
-  - `VERCEL_AI_GATEWAY_URL` / `VERCEL_AI_GATEWAY_KEY` / `VERCEL_AI_MODEL` — AI features
-  - `DESKTOP_INSTALLER_URL` — desktop download redirect
+  - `ADMIN_PASSWORD` / `ADMIN_EMAIL` - override the seeded admin account
+  - `CORS_ORIGIN` - extra allowed origin beyond `primers-store*.vercel.app`
+  - `VERCEL_AI_GATEWAY_URL` / `VERCEL_AI_GATEWAY_KEY` / `VERCEL_AI_MODEL` - AI features
+  - `DESKTOP_INSTALLER_URL` - desktop download redirect
 
 ### MongoDB Atlas
 - Free M0 cluster, database name `primers_store` (created automatically on first write)
-- **Network Access must allow Railway** — easiest is `0.0.0.0/0` (Allow Access from Anywhere)
+- **Network Access must allow Railway** - easiest is `0.0.0.0/0` (Allow Access from Anywhere)
 - Rotate credentials from Atlas → Database Access if they ever leak
 
 ## Colors & Branding
@@ -230,7 +230,7 @@ Primers Dark:   #3A56D4  (hover)
 Primers Light:  #91A7FF  (accents)
 ```
 
-Tailwind config: `client/tailwind.config.js` — `primer` color scale from 50 to 950.
+Tailwind config: `client/tailwind.config.js` - `primer` color scale from 50 to 950.
 
 ## If You Need to Reset Everything
 
@@ -241,9 +241,9 @@ Tailwind config: `client/tailwind.config.js` — `primer` color scale from 50 to
 
 ## What Comes Next (Suggested)
 
-1. **Object storage for uploads** — Cloudflare R2 or S3 (fixes Known Issue #1)
-2. **Add email verification** — Currently stubbed but not implemented (no SMTP)
-3. **Payment system** — Stripe integration for paid apps
-4. **Auto-update mechanism** — App version checking + background updates
-5. **Analytics dashboard** — Download/rating trends for developers
-6. **Custom domain** — `primers.store` or similar on Vercel
+1. **Object storage for uploads** - Cloudflare R2 or S3 (fixes Known Issue #1)
+2. **Add email verification** - Currently stubbed but not implemented (no SMTP)
+3. **Payment system** - Stripe integration for paid apps
+4. **Auto-update mechanism** - App version checking + background updates
+5. **Analytics dashboard** - Download/rating trends for developers
+6. **Custom domain** - `primers.store` or similar on Vercel

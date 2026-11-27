@@ -179,7 +179,7 @@ ipcMain.handle('native:uninstall', async (event, { slug, name }) => {
       const match = stdout.match(/UninstallString\s+REG_SZ\s+(.+)/i);
       if (match) {
         const uninstallStr = match[1].trim();
-        // Parse the uninstall path safely — may be quoted: "C:\path\uninstall.exe" [args]
+        // Parse the uninstall path safely - may be quoted: "C:\path\uninstall.exe" [args]
         const exeMatch = uninstallStr.match(/^"([^"]+)"|^([^\s]+)/);
         const exePath = exeMatch ? (exeMatch[1] || exeMatch[2]) : null;
         if (!exePath) continue;

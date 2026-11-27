@@ -182,7 +182,7 @@ export default function Dashboard() {
                           {app.status}
                         </span>
                         {app.status === 'rejected' && app.review_notes && (
-                          <span className="ml-2 text-red-500">— {app.review_notes}</span>
+                          <span className="ml-2 text-red-500">Reviewer note: {app.review_notes}</span>
                         )}
                       </p>
                     </div>

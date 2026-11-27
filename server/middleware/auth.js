@@ -7,7 +7,7 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
   throw new Error('JWT_SECRET must be set in production');
 }
 const JWT_SECRET = process.env.JWT_SECRET || 'primers-store-dev-only-secret';
-if (!process.env.JWT_SECRET) console.warn('⚠️  JWT_SECRET not set — using a development-only secret.');
+if (!process.env.JWT_SECRET) console.warn('JWT_SECRET not set, using a development-only secret.');
 const JWT_EXPIRY = '7d';
 
 async function authMiddleware(req, res, next) {
@@ -39,7 +39,7 @@ async function authMiddleware(req, res, next) {
   }
 
   // A bad/expired token means "anonymous", but a database failure must surface
-  // as a 5xx — otherwise a transient outage would masquerade as a logout.
+  // as a 5xx - otherwise a transient outage would masquerade as a logout.
   try {
     jwt.verify(token, JWT_SECRET);
   } catch {
@@ -89,7 +89,7 @@ function requireDeveloper(req, res, next) {
 }
 
 function signToken(userId) {
-  // jti makes every token unique — two logins in the same second would otherwise
+  // jti makes every token unique - two logins in the same second would otherwise
   // produce identical JWTs and collide with the sessions.token unique index
   return jwt.sign({ userId, jti: crypto.randomBytes(8).toString('hex') }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
 }

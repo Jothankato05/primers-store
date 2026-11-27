@@ -4,7 +4,7 @@ const { requireAuth, requireDeveloper } = require('../middleware/auth');
 const { rateLimit } = require('../middleware/rateLimit');
 const { App } = require('../database');
 
-// The chat endpoint is public and each call costs gateway credits — keep it bounded
+// The chat endpoint is public and each call costs gateway credits - keep it bounded
 const chatLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 30,
@@ -46,7 +46,7 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// POST /api/ai/chat — public app discovery assistant
+// POST /api/ai/chat - public app discovery assistant
 router.post('/chat', chatLimiter, async (req, res) => {
   try {
     const { message } = req.body;
@@ -61,7 +61,7 @@ router.post('/chat', chatLimiter, async (req, res) => {
       .lean();
 
     const appList = apps.map(a =>
-      `[${a._id}] ${a.name} (${a.category}) — ${a.short_description || 'No description'}`
+      `[${a._id}] ${a.name} (${a.category}): ${a.short_description || 'No description'}`
     ).join('\n');
 
     const systemPrompt = `You are a helpful app discovery assistant for Primers Store, a curated app store.
@@ -71,7 +71,8 @@ ${appList}
 
 Rules:
 - Only recommend apps from the list above, mentioned by their exact name
-- Be concise — 1-3 sentences plus a list of relevant apps
+- Be concise: 1-3 sentences plus a list of relevant apps
+- Write plainly, with no hype words, emojis or em dashes
 - If no apps match the user's need, say so honestly and suggest browsing by category
 - Never make up apps not in the list`;
 
@@ -103,7 +104,7 @@ Rules:
   }
 });
 
-// POST /api/ai/generate-description — developers only
+// POST /api/ai/generate-description - developers only
 router.post('/generate-description', requireAuth, requireDeveloper, async (req, res) => {
   try {
     const { name, category, description } = req.body;
@@ -114,7 +115,7 @@ router.post('/generate-description', requireAuth, requireDeveloper, async (req, 
     const reply = await callAI([
       {
         role: 'system',
-        content: 'You are a copywriter for an app store. Write short, punchy one-liner descriptions. Return ONLY the description text — no quotes, no labels, nothing else. Max 200 characters.',
+        content: 'You write app store descriptions. Write one plain sentence that says what the app does and who it is for, using only facts from the developer\'s description. Do not use slogans, sentence fragments, hype words (seamless, powerful, revolutionary, unlock, elevate, empower, supercharge, cutting-edge), exclamation marks, emojis or em dashes. Return only the sentence, with no quotes or labels. Max 200 characters.',
       },
       {
         role: 'user',
@@ -130,7 +131,7 @@ router.post('/generate-description', requireAuth, requireDeveloper, async (req, 
   }
 });
 
-// POST /api/ai/moderate — developers only
+// POST /api/ai/moderate - developers only
 router.post('/moderate', requireAuth, requireDeveloper, async (req, res) => {
   try {
     const { name, description, category } = req.body;

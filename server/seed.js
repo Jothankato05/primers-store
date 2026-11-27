@@ -1,4 +1,4 @@
-// Manual seed script — the server also auto-seeds on first run (see index.js).
+// Manual seed script - the server also auto-seeds on first run (see index.js).
 // Usage: MONGODB_URI=... node server/seed.js
 const { connectDb, hashPassword, User } = require('./database');
 

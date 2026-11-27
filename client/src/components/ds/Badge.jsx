@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Primers Store — Badge
+ * Primers Store - Badge
  * Soft-tinted pill for status, roles, prices and category tags.
  */
 export function Badge({

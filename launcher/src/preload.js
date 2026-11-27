@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('__PRIMERS__', {
   isElectron: true,
   apiUrl: 'https://store.primersgroup.ng/api',
 
-  // Native install — real download + silent installer run
+  // Native install - real download + silent installer run
   install: (payload) => ipcRenderer.invoke('native:install', payload),
   uninstall: (payload) => ipcRenderer.invoke('native:uninstall', payload),
 

@@ -250,7 +250,7 @@ router.patch('/developer-applications/:id/review', async (req, res, next) => {
     await application.save();
 
     if (status === 'approved') {
-      // Only promote regular users — never overwrite an admin's role
+      // Only promote regular users - never overwrite an admin's role
       await User.updateOne({ _id: application.user_id, role: 'user' }, { role: 'developer' });
     }
 

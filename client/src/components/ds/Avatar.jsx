@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Primers Store — Avatar
+ * Primers Store - Avatar
  * Circular user/app avatar with a brand-tinted ring. Falls back to
  * initials. `app` shape uses a rounded square (app-icon style).
  */

@@ -386,7 +386,7 @@ export default function EditApp() {
                     className="input-field" placeholder="https://github.com/.../releases/download/v1.0.0/App.exe" />
                   <input type="number" value={versionExternalSize} onChange={e => setVersionExternalSize(e.target.value)}
                     className="input-field" placeholder="File size in bytes (optional)" />
-                  <p className="text-xs text-gray-500">For files hosted elsewhere — host on GitHub Releases, Google Drive, etc.</p>
+                  <p className="text-xs text-gray-500">For files hosted elsewhere, such as GitHub Releases or Google Drive.</p>
                 </div>
               ) : (
                 <div {...versionFileDropzone.getRootProps()} className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primer-400">

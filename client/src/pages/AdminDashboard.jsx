@@ -219,7 +219,7 @@ export default function AdminDashboard() {
                             'bg-gray-100 text-gray-700'
                           }`}>{app.status}</span>
                           <span className="text-xs text-gray-400">{app.category}</span>
-                          {app.review_notes && <span className="text-xs text-gray-500 italic">— {app.review_notes}</span>}
+                          {app.review_notes && <span className="text-xs text-gray-500 italic">Note: {app.review_notes}</span>}
                         </div>
                       </div>
                     </div>
@@ -407,7 +407,7 @@ export default function AdminDashboard() {
                   {appDetail.versions.map(v => (
                     <div key={v.id} className="rounded-lg p-4 space-y-2" style={{ border: '1px solid var(--border)', background: 'var(--surface-sunken)' }}>
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">v{v.version} — {v.platform}</span>
+                        <span className="font-medium text-sm">v{v.version} · {v.platform}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           v.status === 'approved' ? 'bg-green-100 text-green-700' :
                           v.status === 'rejected' ? 'bg-red-100 text-red-700' :

@@ -8,7 +8,7 @@ const { connectDb, dbState, hashPassword, verifyPassword, User, App, AppVersion,
 
 const app = express();
 
-// Railway/Vercel sit in front of the API — trust X-Forwarded-For so req.ip is the
+// Railway/Vercel sit in front of the API - trust X-Forwarded-For so req.ip is the
 // real client, not the proxy (otherwise every user shares one rate-limit bucket).
 app.set('trust proxy', true);
 
@@ -29,7 +29,7 @@ async function autoSeed() {
     const prod = process.env.NODE_ENV === 'production';
     const random = () => crypto.randomBytes(24).toString('base64url');
     const adminPassword = process.env.ADMIN_PASSWORD || (prod ? null : 'admin123');
-    console.log('🌱 First run — seeding accounts...');
+    console.log('First run: seeding accounts...');
     if (adminPassword) {
       await User.create({ username: 'admin', email: process.env.ADMIN_EMAIL || 'admin@primers.store', password_hash: hashPassword(adminPassword), display_name: 'Primers Admin', role: 'admin', email_verified: true });
     } else {
@@ -43,13 +43,13 @@ async function autoSeed() {
   if (appCount === 0) {
     const dev = await User.findOne({ email: 'dev@primers.store' });
     if (!dev) return;
-    console.log('📦 Seeding Presona...');
+    console.log('Seeding Presona...');
     const presona = await App.create({
       developer_id: dev._id,
       name: 'Presona',
       slug: 'presona',
-      description: 'Presona is a fully offline AI agent that knows your work, not just your files. It tracks your projects, detects what\'s active, blocked, or going stale, cleans up your storage, and delivers a daily narrative of everything you\'re working on — all powered by PrimersGPT running entirely on your machine.\n\nFeatures:\n• Project tracking with active/blocked/stale detection\n• Daily work narrative generation\n• Storage cleanup and duplicate detection\n• System tray operation (stays alive when window closed)\n• Desktop notifications\n• Zero cloud, zero login, zero subscription\n\nPowered by PrimersGPT — built on phi4-mini and nomic-embed-text through a fully hidden Ollama layer.',
-      short_description: 'Your personal AI agent. Fully offline. Knows your work. Powered by PrimersGPT.',
+      description: 'Presona is an AI agent for Windows that runs entirely on your machine. It watches your project folders, tells you which projects are active, blocked or going stale, finds duplicate files to clean up, and writes a short summary of your work each day.\n\nFeatures:\n• Project tracking with active, blocked and stale detection\n• A daily written summary of what you worked on\n• Storage cleanup and duplicate detection\n• Runs from the system tray, so it keeps working when the window is closed\n• Desktop notifications\n• No cloud, no account and no subscription\n\nPresona runs PrimersGPT locally: phi4-mini for text and nomic-embed-text for search, served through a bundled Ollama.',
+      short_description: 'An offline AI agent for Windows that tracks your projects, cleans up storage and writes a daily summary of your work.',
       category: 'Productivity',
       website: 'https://github.com/Jothankato05/primers-store/releases/tag/v1.0.0',
       status: 'approved',
@@ -58,13 +58,13 @@ async function autoSeed() {
     await AppVersion.create({
       app_id: presona._id,
       version: '1.0.0',
-      changelog: 'Initial release — the first app on Primers Store.',
+      changelog: 'Initial release. The first app on Primers Store.',
       file_url: 'https://archive.org/download/presona-installer/Presona-Installer.exe',
       file_size: 1640000000,
       platform: 'windows',
       status: 'approved',
     });
-    console.log('✅ Presona seeded');
+    console.log('Presona seeded');
   }
 }
 
@@ -160,7 +160,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/uploads', require('./routes/uploads'));
 
-// Health check — reports database state so deploy issues are diagnosable
+// Health check - reports database state so deploy issues are diagnosable
 app.get('/api/health', async (req, res) => {
   try { await ensureDb(); } catch { /* reported below */ }
   const db = dbState();

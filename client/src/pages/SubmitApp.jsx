@@ -109,7 +109,7 @@ export default function SubmitApp() {
           const proceed = window.confirm(`AI content check flagged this submission:\n\n"${modData.reason}"\n\nSubmit anyway for manual admin review?`);
           if (!proceed) { setSubmitting(false); return; }
         }
-      } catch { /* fail open — don't block submission if AI is down */ }
+      } catch { /* fail open - don't block submission if AI is down */ }
 
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => { if (v) formData.append(k, v); });
